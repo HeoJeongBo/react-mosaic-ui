@@ -1,0 +1,233 @@
+:root {
+  --color-mosaic-border: #cbd5e1;
+  --color-mosaic-background: #ffffff;
+  --color-mosaic-window: #f8fafc;
+  --color-mosaic-toolbar: #f1f5f9;
+  --color-mosaic-split: #94a3b8;
+  --color-mosaic-split-hover: #64748b;
+  --z-mosaic: 1000;
+  --rm-split-size: 4px;
+  --rm-toolbar-height: 40px;
+}
+
+/* Utility classes */
+.rm-absolute {
+  position: absolute !important;
+}
+
+.rm-relative {
+  position: relative !important;
+}
+
+.rm-w-full {
+  width: 100% !important;
+}
+
+.rm-h-full {
+  height: 100% !important;
+}
+
+.rm-flex {
+  display: flex !important;
+}
+
+.rm-items-center {
+  align-items: center !important;
+}
+
+.rm-justify-center {
+  justify-content: center !important;
+}
+
+.rm-justify-between {
+  justify-content: space-between !important;
+}
+
+.rm-gap-1 {
+  gap: 0.25rem !important;
+}
+
+.rm-text-gray-500 {
+  color: #6b7280 !important;
+}
+
+.rm-text-sm {
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+.rm-text-xs {
+  font-size: 0.75rem !important;
+  line-height: 1rem !important;
+}
+
+.rm-font-medium {
+  font-weight: 500 !important;
+}
+
+.rm-px-2 {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+.rm-py-1 {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+}
+
+.rm-px-4 {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+.rm-py-2 {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+.rm-rounded {
+  border-radius: 0.25rem !important;
+}
+
+.rm-border-b {
+  border-bottom-width: 1px !important;
+}
+
+.rm-border-mosaic-border {
+  border-color: var(--color-mosaic-border) !important;
+}
+
+.rm-bg-mosaic-toolbar {
+  background-color: var(--color-mosaic-toolbar) !important;
+}
+
+.rm-select-none {
+  user-select: none !important;
+}
+
+.rm-cursor-move {
+  cursor: move !important;
+}
+
+.rm-overflow-hidden {
+  overflow: hidden !important;
+}
+
+.rm-z-mosaic {
+  z-index: var(--z-mosaic) !important;
+}
+
+.rm-transition-colors {
+  transition: background-color 0.15s !important;
+}
+
+.rm-transition {
+  transition-property: all !important;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition-duration: 150ms !important;
+}
+
+.rm-bg-mosaic-split {
+  background: var(--color-mosaic-split) !important;
+}
+
+.rm-bg-mosaic-split-hover {
+  background: var(--color-mosaic-split-hover) !important;
+}
+
+.hover\:rm-bg-gray-200:hover {
+  background-color: #e5e7eb !important;
+}
+
+.hover\:rm-bg-red-200:hover {
+  background-color: #fecaca !important;
+}
+
+/* Base styles */
+.react-mosaic {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.rm-mosaic-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-mosaic-window);
+  border-radius: 0.25rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  overflow: hidden;
+}
+
+.rm-mosaic-window-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: var(--color-mosaic-toolbar);
+  border-bottom: 1px solid var(--color-mosaic-border);
+  user-select: none;
+  height: var(--rm-toolbar-height);
+}
+
+.rm-mosaic-window-title {
+  font-weight: 500;
+  font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.rm-mosaic-window-controls {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.rm-mosaic-window-body {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.rm-mosaic-button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s;
+  cursor: pointer;
+  user-select: none;
+  border: 0;
+  outline: none;
+}
+
+.rm-mosaic-button:hover {
+  background-color: rgb(229 231 235);
+}
+
+.rm-mosaic-button:active {
+  background-color: rgb(209 213 219);
+}
+
+.rm-mosaic-split {
+  position: absolute;
+  background: var(--color-mosaic-split);
+  transition: background-color 0.15s;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.rm-mosaic-split:hover {
+  background: var(--color-mosaic-split-hover);
+}
+
+.rm-cursor-col-resize {
+  cursor: col-resize;
+}
+
+.rm-cursor-row-resize {
+  cursor: row-resize;
+}
