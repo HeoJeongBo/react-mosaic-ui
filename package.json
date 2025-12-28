@@ -1,6 +1,6 @@
 {
 	"name": "react-mosaic-ui",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "A modern React tiling window manager with FSD architecture, Rollup bundling, and Tailwind CSS v4",
 	"type": "module",
 	"main": "./dist/index.cjs",
