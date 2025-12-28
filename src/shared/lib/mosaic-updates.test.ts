@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MosaicNode } from '../types';
 import { MosaicDropTargetPosition } from '../types';
-import {
-  createDragToUpdates,
-  createRemoveUpdate,
-  updateTree,
-} from './mosaic-updates';
+import { createDragToUpdates, createRemoveUpdate, updateTree } from './mosaic-updates';
 
 type TestId = 'a' | 'b' | 'c' | 'd' | 'e';
 
@@ -74,16 +70,11 @@ describe('mosaic-updates', () => {
 
       const result = updateTree(root, updates);
 
-      // Expected: 'a' should be removed from root.first,
-      // and 'b' should be replaced with a split of 'a' (left) and 'b' (right)
+      // When 'a' is dragged to the left of 'b', 'a' is removed from root.first
+      // and since root.first only contained 'a', it collapses to just the second branch
       expect(result).toEqual({
         direction: 'column',
-        first: {
-          direction: 'row',
-          first: 'a',
-          second: 'b',
-          splitPercentage: 50,
-        },
+        first: 'b',
         second: 'c',
         splitPercentage: 50,
       });

@@ -301,6 +301,78 @@ createExpandUpdate(path: MosaicPath, percentage?: number): MosaicUpdate<T>
 This project strictly follows FSD architecture and clean code principles.
 Before contributing, please review the [Clean Code Guide](./docs/clean-code-guide.md) and [FSD Architecture](./docs/fsd-architecture.md).
 
+### Git Workflow
+
+This project uses Husky for git hooks and follows conventional commit standards.
+
+#### Commit Message Format
+
+All commits must follow the conventional commit format:
+
+```
+type(scope?): subject
+
+Examples:
+feat: add window resize feature
+fix(mosaic): resolve drag and drop issue
+docs: update README
+```
+
+**Allowed types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, missing semicolons, etc.)
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
+- `perf`: Performance improvements
+- `ci`: CI/CD changes
+- `build`: Build system changes
+- `revert`: Revert previous commit
+
+#### Pre-commit Hooks
+
+Before each commit, the following checks run automatically:
+1. Linting (`bun run lint`)
+2. Type checking (`bun run typecheck`)
+3. Tests (`bun test`)
+
+If any check fails, the commit will be blocked.
+
+### Release Process
+
+This project uses [release-it](https://github.com/release-it/release-it) for automated releases.
+
+#### Creating a Release
+
+```bash
+# Patch release (1.0.0 → 1.0.1)
+bun run release:patch
+
+# Minor release (1.0.0 → 1.1.0)
+bun run release:minor
+
+# Major release (1.0.0 → 2.0.0)
+bun run release:major
+
+# Interactive release (choose version)
+bun run release
+
+# Dry run (test without publishing)
+bun run release:dry
+```
+
+The release process will:
+1. Run all checks (lint, typecheck, tests)
+2. Build the project
+3. Update version in package.json
+4. Generate/update CHANGELOG.md
+5. Create a git tag
+6. Push to GitHub
+7. Create a GitHub release
+8. Publish to npm
+
 ## 📄 License
 
 MIT

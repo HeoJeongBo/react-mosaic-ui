@@ -1,6 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import type { MosaicNode } from '@/shared/types';
-import { split, createBoundingBox } from '@/shared/lib/bounding-box';
+import { createBoundingBox, split } from '@/shared/lib/bounding-box';
+import { describe, expect, it } from 'vitest';
 
 describe('Resize Isolation', () => {
   it('should isolate horizontal resize in 2x2 grid', () => {
@@ -12,23 +11,6 @@ describe('Resize Isolation', () => {
     // └── Bottom Row (row)
     //     ├── C
     //     └── D
-
-    const tree: MosaicNode<string> = {
-      direction: 'column',
-      splitPercentage: 50,
-      first: {
-        direction: 'row',
-        splitPercentage: 50,
-        first: 'a',
-        second: 'b',
-      },
-      second: {
-        direction: 'row',
-        splitPercentage: 50,
-        first: 'c',
-        second: 'd',
-      },
-    };
 
     // Root bounding box
     const rootBox = createBoundingBox(0, 100, 100, 0);
