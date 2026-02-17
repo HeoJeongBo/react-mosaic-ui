@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { MosaicNode } from '../types';
 import { MosaicDropTargetPosition } from '../types';
-import { createDragToUpdates, createRemoveUpdate, updateTree } from './mosaic-updates';
+import {
+  createDragToUpdates,
+  createExpandUpdate,
+  createHideUpdate,
+  createRemoveUpdate,
+  createReplaceUpdate,
+  createSplitUpdate,
+  updateTree,
+} from './mosaic-updates';
 
 type TestId = 'a' | 'b' | 'c' | 'd' | 'e';
 
@@ -289,6 +297,230 @@ describe('mosaic-updates', () => {
       // When destination is a parent of source, we remove source from within destination first
       // This should create a valid result
       expect(result).toBeDefined();
+    });
+  });
+
+  describe('createExpandUpdate', () => {
+    it('should expand first branch to given percentage', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      };
+
+      const update = createExpandUpdate(['first'], 70);
+      const result = updateTree(root, [update]);
+
+      expect(result).toEqual({
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 70,
+      });
+    });
+
+    it('should expand second branch so first takes remaining percentage', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      };
+
+      const update = createExpandUpdate(['second'], 70);
+      const result = updateTree(root, [update]);
+
+      // second branch takes 70%, so splitPercentage = 100 - 70 = 30
+      expect(result).toEqual({
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 30,
+      });
+    });
+
+    it('should use default 70% when no percentage given', () => {
+      const update = createExpandUpdate(['first']);
+      expect(update.spec).toEqual({ splitPercentage: { $set: 70 } });
+    });
+
+    it('should throw when trying to expand root node', () => {
+      expect(() => createExpandUpdate([])).toThrow();
+    });
+
+    it('should expand nested node', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: {
+          direction: 'column',
+          first: 'a',
+          second: 'b',
+          splitPercentage: 50,
+        },
+        second: 'c',
+        splitPercentage: 50,
+      };
+
+      const update = createExpandUpdate(['first', 'first'], 90);
+      const result = updateTree(root, [update]);
+
+      expect(result).toEqual({
+        direction: 'row',
+        first: {
+          direction: 'column',
+          first: 'a',
+          second: 'b',
+          splitPercentage: 90,
+        },
+        second: 'c',
+        splitPercentage: 50,
+      });
+    });
+  });
+
+  describe('createHideUpdate', () => {
+    it('should set a node to null', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      };
+
+      const update = createHideUpdate<TestId>(['first']);
+      const result = updateTree(root, [update]);
+
+      expect(result).toEqual({
+        direction: 'row',
+        first: null,
+        second: 'b',
+        splitPercentage: 50,
+      });
+    });
+
+    it('should produce update targeting the correct path', () => {
+      const update = createHideUpdate<TestId>(['first', 'second']);
+      expect(update.path).toEqual(['first', 'second']);
+      expect(update.spec).toEqual({ $set: null });
+    });
+  });
+
+  describe('createReplaceUpdate', () => {
+    it('should replace a leaf node', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      };
+
+      const update = createReplaceUpdate<TestId>(['first'], 'e');
+      const result = updateTree(root, [update]);
+
+      expect(result).toEqual({
+        direction: 'row',
+        first: 'e',
+        second: 'b',
+        splitPercentage: 50,
+      });
+    });
+
+    it('should replace with a parent node', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      };
+
+      const newNode: MosaicNode<TestId> = {
+        direction: 'column',
+        first: 'c',
+        second: 'd',
+        splitPercentage: 50,
+      };
+
+      const update = createReplaceUpdate<TestId>(['second'], newNode);
+      const result = updateTree(root, [update]);
+
+      expect(result).toEqual({
+        direction: 'row',
+        first: 'a',
+        second: {
+          direction: 'column',
+          first: 'c',
+          second: 'd',
+          splitPercentage: 50,
+        },
+        splitPercentage: 50,
+      });
+    });
+  });
+
+  describe('createSplitUpdate', () => {
+    it('should split a node into two with default row direction', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'column',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      };
+
+      const update = createSplitUpdate<TestId>(['first'], 'c');
+      const result = updateTree(root, [update]);
+
+      expect(result).toEqual({
+        direction: 'column',
+        first: {
+          direction: 'row',
+          first: 'c',
+          second: 'c',
+          splitPercentage: 50,
+        },
+        second: 'b',
+        splitPercentage: 50,
+      });
+    });
+
+    it('should split with column direction', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      };
+
+      const update = createSplitUpdate<TestId>(['second'], 'e', 'column');
+      const result = updateTree(root, [update]);
+
+      expect(result).toEqual({
+        direction: 'row',
+        first: 'a',
+        second: {
+          direction: 'column',
+          first: 'e',
+          second: 'e',
+          splitPercentage: 50,
+        },
+        splitPercentage: 50,
+      });
+    });
+  });
+
+  describe('createRemoveUpdate error cases', () => {
+    it('should throw when root is null', () => {
+      expect(() => createRemoveUpdate(null, ['first'])).toThrow();
+    });
+
+    it('should throw when path is empty (removing root)', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      };
+      expect(() => createRemoveUpdate(root, [])).toThrow();
     });
   });
 });
