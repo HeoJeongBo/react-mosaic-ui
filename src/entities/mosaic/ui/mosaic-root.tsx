@@ -1,4 +1,4 @@
-import { MosaicDropTarget } from '@/features/drag-drop';
+import { MosaicDropTarget, RootDropTargets } from '@/features/drag-drop';
 import { Split } from '@/features/resize';
 import { isParent } from '@/shared/lib';
 import { createBoundingBox, split } from '@/shared/lib/bounding-box';
@@ -38,6 +38,7 @@ export const MosaicRoot = <T extends MosaicKey>({
         resize={resize}
         mosaicId={mosaicId}
       />
+      <RootDropTargets />
     </div>
   );
 };

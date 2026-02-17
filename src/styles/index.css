@@ -243,3 +243,18 @@
 .rm-dragging .rm-mosaic-drop-target {
   pointer-events: all;
 }
+
+/* Root drop targets: completely hidden until drag starts.
+   These span the full layout (path=[]) for root-level splits. */
+.rm-root-drop-targets {
+  display: none;
+}
+
+.rm-dragging .rm-root-drop-targets {
+  display: block;
+  pointer-events: none;
+}
+
+.rm-dragging .rm-root-drop-targets .rm-mosaic-drop-target {
+  pointer-events: all;
+}

@@ -41,7 +41,7 @@ const MosaicDropTargetImpl = ({ position, path, mosaicId }: MosaicDropTargetProp
       onDrop={(e) => e.preventDefault()}
       className="rm-mosaic-drop-target rm-absolute"
       style={{
-        ...getDropTargetStyle(position),
+        ...getDropTargetStyle(position, isOver),
         opacity: isOver ? 1 : 0,
         backgroundColor: 'rgba(59, 130, 246, 0.2)',
         border: '2px solid rgba(59, 130, 246, 0.6)',
@@ -54,43 +54,24 @@ const MosaicDropTargetImpl = ({ position, path, mosaicId }: MosaicDropTargetProp
 
 export const MosaicDropTarget = React.memo(MosaicDropTargetImpl);
 
-const getDropTargetStyle = (position: MosaicDropTargetPosition): React.CSSProperties => {
-  const baseStyle = {
-    zIndex: 1000,
-  };
+const getDropTargetStyle = (
+  position: MosaicDropTargetPosition,
+  isOver: boolean,
+): React.CSSProperties => {
+  // Hit area: 25% (non-overlapping, so all four zones are independently reachable)
+  // Hover state: expands to 50% visual feedback
+  // This matches react-mosaic's original 30%/50% pattern.
+  const size = isOver ? '50%' : '25%';
+  const baseStyle = { zIndex: 1000 };
 
   switch (position) {
     case MosaicDropTargetPosition.TOP:
-      return {
-        ...baseStyle,
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '30%',
-      };
+      return { ...baseStyle, top: 0, left: 0, right: 0, height: size };
     case MosaicDropTargetPosition.BOTTOM:
-      return {
-        ...baseStyle,
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '30%',
-      };
+      return { ...baseStyle, bottom: 0, left: 0, right: 0, height: size };
     case MosaicDropTargetPosition.LEFT:
-      return {
-        ...baseStyle,
-        top: 0,
-        bottom: 0,
-        left: 0,
-        width: '30%',
-      };
+      return { ...baseStyle, top: 0, bottom: 0, left: 0, width: size };
     case MosaicDropTargetPosition.RIGHT:
-      return {
-        ...baseStyle,
-        top: 0,
-        bottom: 0,
-        right: 0,
-        width: '30%',
-      };
+      return { ...baseStyle, top: 0, bottom: 0, right: 0, width: size };
   }
 };
