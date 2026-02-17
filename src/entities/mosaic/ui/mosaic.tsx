@@ -17,8 +17,10 @@ import type {
   TileRenderer,
 } from '@/shared/types';
 import classNames from 'classnames';
-import { useCallback, useMemo, useState } from 'react';
-import { DndProvider } from 'react-dnd';
+import { createDragDropManager } from 'dnd-core';
+import type { DragDropManager } from 'dnd-core';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { DndContext } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { TouchBackend } from 'react-dnd-touch-backend';
 import { MosaicRoot } from './mosaic-root';
@@ -53,6 +55,15 @@ const isControlled = <T extends MosaicKey>(
   return 'value' in props;
 };
 
+const getBackend = () => {
+  if (typeof window === 'undefined') return HTML5Backend;
+  const isTouchOnly =
+    'ontouchstart' in window &&
+    window.matchMedia('(pointer: coarse)').matches &&
+    !window.matchMedia('(pointer: fine)').matches;
+  return isTouchOnly ? TouchBackend : HTML5Backend;
+};
+
 export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
   const {
     renderTile,
@@ -63,80 +74,91 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
     mosaicId = 'default-mosaic',
   } = props;
 
+  const controlled = isControlled(props);
+  const controlledRef = useRef(controlled);
+  controlledRef.current = controlled;
+
   const [internalValue, setInternalValue] = useState<MosaicNode<T> | null>(
-    isControlled(props) ? props.value : props.initialValue,
+    controlled ? props.value : props.initialValue,
   );
 
-  const currentValue = isControlled(props) ? props.value : internalValue;
+  const currentValue = controlled ? props.value : internalValue;
 
-  const handleChange = useCallback(
-    (newValue: MosaicNode<T> | null) => {
-      if (!isControlled(props)) {
-        setInternalValue(newValue);
-      }
-      onChange?.(newValue);
-    },
-    [onChange, props],
-  );
+  // Store callbacks in refs so mosaicActions never needs to be recreated.
+  // This keeps MosaicContext stable and prevents context-triggered re-renders
+  // in all consumers (MosaicWindow, MosaicWindowToolbar, MosaicDropTarget).
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const onReleaseRef = useRef(onRelease);
+  onReleaseRef.current = onRelease;
 
-  const handleRelease = useCallback(
-    (newValue: MosaicNode<T> | null) => {
-      onRelease?.(newValue);
-    },
-    [onRelease],
-  );
+  const currentValueRef = useRef(currentValue);
+  currentValueRef.current = currentValue;
 
+  // mosaicActions is created once and never changes — all external values
+  // are read from refs at call-time.
   const mosaicActions: MosaicRootActions<T> = useMemo(
     () => ({
       expand: (path: MosaicPath, percentage?: number) => {
-        if (currentValue === null) return;
+        const root = currentValueRef.current;
+        if (root === null) return;
         const update = createExpandUpdate<T>(path, percentage);
-        const newTree = updateTree(currentValue, [update]);
-        handleChange(newTree);
-        handleRelease(newTree);
+        const newTree = updateTree(root, [update]);
+        if (!controlledRef.current) setInternalValue(newTree);
+        onChangeRef.current?.(newTree);
+        onReleaseRef.current?.(newTree);
       },
 
       remove: (path: MosaicPath) => {
-        if (currentValue === null) return;
+        const root = currentValueRef.current;
+        if (root === null) return;
         try {
-          const update = createRemoveUpdate(currentValue, path);
-          const newTree = updateTree(currentValue, [update]);
-          handleChange(newTree);
-          handleRelease(newTree);
+          const update = createRemoveUpdate(root, path);
+          const newTree = updateTree(root, [update]);
+          if (!controlledRef.current) setInternalValue(newTree);
+          onChangeRef.current?.(newTree);
+          onReleaseRef.current?.(newTree);
         } catch (e) {
-          // If removing fails, set to null
-          handleChange(null);
-          handleRelease(null);
+          if (!controlledRef.current) setInternalValue(null);
+          onChangeRef.current?.(null);
+          onReleaseRef.current?.(null);
         }
       },
 
       hide: (path: MosaicPath) => {
-        if (currentValue === null) return;
+        const root = currentValueRef.current;
+        if (root === null) return;
         const update = createHideUpdate<T>(path);
-        const newTree = updateTree(currentValue, [update]);
-        handleChange(newTree);
+        const newTree = updateTree(root, [update]);
+        if (!controlledRef.current) setInternalValue(newTree);
+        onChangeRef.current?.(newTree);
       },
 
       replaceWith: (path: MosaicPath, node: MosaicNode<T>) => {
-        if (currentValue === null) return;
+        const root = currentValueRef.current;
+        if (root === null) return;
         const update = createReplaceUpdate(path, node);
-        const newTree = updateTree(currentValue, [update]);
-        handleChange(newTree);
-        handleRelease(newTree);
+        const newTree = updateTree(root, [update]);
+        if (!controlledRef.current) setInternalValue(newTree);
+        onChangeRef.current?.(newTree);
+        onReleaseRef.current?.(newTree);
       },
 
       updateTree: (updates: MosaicUpdate<T>[], suppressOnRelease = false) => {
-        if (currentValue === null) return;
-        const newTree = updateTree(currentValue, updates);
-        handleChange(newTree);
+        const root = currentValueRef.current;
+        if (root === null) return;
+        const newTree = updateTree(root, updates);
+        if (!controlledRef.current) setInternalValue(newTree);
+        onChangeRef.current?.(newTree);
         if (!suppressOnRelease) {
-          handleRelease(newTree);
+          onReleaseRef.current?.(newTree);
         }
       },
 
-      getRoot: () => currentValue,
+      getRoot: () => currentValueRef.current,
     }),
-    [currentValue, handleChange, handleRelease],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const contextValue = useMemo(
@@ -147,16 +169,44 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
     [mosaicActions, mosaicId],
   );
 
-  // Detect touch support
-  const isTouchDevice =
-    typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  // Create a stable DnD manager that survives React 18 StrictMode double-mount.
+  // DndProvider's cleanup tears down the backend during StrictMode, breaking drag.
+  // Using useRef ensures the manager is created once and never torn down.
+  const managerRef = useRef<DragDropManager | null>(null);
+  if (!managerRef.current) {
+    managerRef.current = createDragDropManager(getBackend());
+  }
 
-  const backend = isTouchDevice ? TouchBackend : HTML5Backend;
+  // Memoize the DndContext value so re-renders of Mosaic don't propagate
+  // to every react-dnd consumer (useDrag/useDrop) via context change.
+  const dndContextValue = useMemo(() => ({ dragDropManager: managerRef.current! }), []);
+
+  // Toggle CSS class imperatively when dragging starts/stops.
+  // This avoids React re-renders while enabling pointer-events on drop targets.
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const monitor = managerRef.current!.getMonitor();
+    const unsubscribe = monitor.subscribeToStateChange(() => {
+      const isDragging = monitor.isDragging();
+      // Defer the DOM mutation to avoid Chrome's bug where modifying an
+      // ancestor element synchronously during `dragstart` immediately cancels
+      // the drag and fires `dragend`.
+      setTimeout(() => {
+        containerRef.current?.classList.toggle('rm-dragging', isDragging);
+      }, 0);
+    });
+    return unsubscribe;
+  }, []);
 
   return (
-    <DndProvider backend={backend}>
+    <DndContext.Provider value={dndContextValue}>
       <MosaicContext.Provider value={contextValue}>
-        <div className={classNames(className, 'rm-w-full rm-h-full rm-relative')}>
+        <div
+          ref={containerRef}
+          className={classNames(className, 'rm-w-full rm-h-full rm-relative')}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => e.preventDefault()}
+        >
           {currentValue === null ? (
             (zeroStateView ?? (
               <div className="rm-flex rm-items-center rm-justify-center rm-w-full rm-h-full rm-text-gray-500">
@@ -172,6 +222,6 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
           )}
         </div>
       </MosaicContext.Provider>
-    </DndProvider>
+    </DndContext.Provider>
   );
 };

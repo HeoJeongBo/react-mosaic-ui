@@ -19,6 +19,5 @@ export const MosaicWindowContext = createContext<MosaicWindowContextValue>({
     split: async () => {},
     replaceWithNew: async () => {},
     getPath: () => [],
-    connectDragSource: (el) => el,
   },
 });

@@ -1,17 +1,18 @@
-import { useDragSource } from '@/features/drag-drop';
-import { getNodeAtPath } from '@/shared/lib';
+import { arePathsEqual, getNodeAtPath } from '@/shared/lib';
 import { MosaicContext, MosaicWindowContext } from '@/shared/lib/context';
-import type { CreateNode, MosaicKey, MosaicPath } from '@/shared/types';
+import type { CreateNode, MosaicDragItem, MosaicKey, MosaicPath } from '@/shared/types';
 import type { MosaicWindowActions } from '@/shared/types';
 import classNames from 'classnames';
-import { type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import React, { type ReactNode, useContext, useMemo, useRef, useState } from 'react';
+import { useDrag } from 'react-dnd';
+
+const DRAG_ITEM_TYPE = 'MosaicWindow';
 
 export interface MosaicWindowProps<T extends MosaicKey> {
   title: string;
   path: MosaicPath;
   children: ReactNode;
   createNode?: CreateNode<T>;
-  draggable?: boolean;
   toolbarControls?: ReactNode;
   additionalControls?: ReactNode;
   renderToolbar?: (props: MosaicWindowToolbarProps<T>, defaultToolbar: ReactNode) => ReactNode;
@@ -28,12 +29,11 @@ export interface MosaicWindowToolbarProps<T extends MosaicKey> {
   additionalControls?: ReactNode;
 }
 
-export const MosaicWindow = <T extends MosaicKey>({
+const MosaicWindowImpl = <T extends MosaicKey>({
   title,
   path,
   children,
   createNode,
-  draggable = true,
   toolbarControls,
   additionalControls,
   renderToolbar,
@@ -41,68 +41,47 @@ export const MosaicWindow = <T extends MosaicKey>({
   onDragEnd,
   className,
 }: MosaicWindowProps<T>) => {
-  const { mosaicActions, mosaicId } = useContext(MosaicContext);
-  const dragOptions = {
-    ...(onDragStart !== undefined && { onDragStart }),
-    ...(onDragEnd !== undefined && { onDragEnd }),
-  };
-  const { isDragging, drag } = useDragSource(
-    path,
-    mosaicId,
-    Object.keys(dragOptions).length > 0 ? dragOptions : undefined,
-  );
+  const { mosaicActions } = useContext(MosaicContext);
 
-  const split = useCallback(async () => {
-    if (!createNode) {
-      throw new Error('createNode is required for split operation');
-    }
-
-    const newNode = await createNode();
-    const root = mosaicActions.getRoot();
-
-    if (root === null) return;
-
-    // Get current node at this path
-    const currentNodeAtPath = getNodeAtPath(root, path);
-    if (!currentNodeAtPath) return;
-
-    mosaicActions.replaceWith(path, {
-      direction: 'row',
-      first: currentNodeAtPath,
-      second: newNode,
-      splitPercentage: 50,
-    });
-  }, [createNode, mosaicActions, path]);
-
-  const replaceWithNew = useCallback(async () => {
-    if (!createNode) {
-      throw new Error('createNode is required for replace operation');
-    }
-
-    const newNode = await createNode();
-    mosaicActions.replaceWith(path, newNode);
-  }, [createNode, mosaicActions, path]);
-
-  const getPath = useCallback(() => path, [path]);
-
-  const connectDragSource = useCallback(
-    (element: React.ReactElement) => {
-      if (!draggable) {
-        return element;
-      }
-      return drag(element);
-    },
-    [draggable, drag],
-  );
+  // Store props in refs so windowActions (and therefore MosaicWindowContext)
+  // never need to be recreated. This prevents context-triggered re-renders
+  // of the toolbar, which would interrupt active drags.
+  const pathRef = useRef(path);
+  pathRef.current = path;
+  const createNodeRef = useRef(createNode);
+  createNodeRef.current = createNode;
 
   const windowActions: MosaicWindowActions = useMemo(
     () => ({
-      split,
-      replaceWithNew,
-      getPath,
-      connectDragSource,
+      split: async () => {
+        const currentCreateNode = createNodeRef.current;
+        if (!currentCreateNode) {
+          throw new Error('createNode is required for split operation');
+        }
+        const newNode = await currentCreateNode();
+        const root = mosaicActions.getRoot();
+        if (root === null) return;
+        const currentPath = pathRef.current;
+        const currentNodeAtPath = getNodeAtPath(root, currentPath);
+        if (!currentNodeAtPath) return;
+        mosaicActions.replaceWith(currentPath, {
+          direction: 'row',
+          first: currentNodeAtPath,
+          second: newNode,
+          splitPercentage: 50,
+        });
+      },
+      replaceWithNew: async () => {
+        const currentCreateNode = createNodeRef.current;
+        if (!currentCreateNode) {
+          throw new Error('createNode is required for replace operation');
+        }
+        const newNode = await currentCreateNode();
+        mosaicActions.replaceWith(pathRef.current, newNode);
+      },
+      getPath: () => pathRef.current,
     }),
-    [split, replaceWithNew, getPath, connectDragSource],
+    [mosaicActions],
   );
 
   const contextValue = useMemo(
@@ -120,7 +99,13 @@ export const MosaicWindow = <T extends MosaicKey>({
     ...(additionalControls !== undefined && { additionalControls }),
   };
 
-  const defaultToolbar = <MosaicWindowToolbar {...toolbarProps} />;
+  const defaultToolbar = (
+    <MosaicWindowToolbar
+      {...toolbarProps}
+      {...(onDragStart !== undefined && { onDragStart })}
+      {...(onDragEnd !== undefined && { onDragEnd })}
+    />
+  );
 
   const toolbar = renderToolbar ? renderToolbar(toolbarProps, defaultToolbar) : defaultToolbar;
 
@@ -130,9 +115,6 @@ export const MosaicWindow = <T extends MosaicKey>({
         className={classNames(
           'rm-mosaic-window',
           'rm-flex rm-flex-col rm-h-full rm-bg-mosaic-window rm-rounded rm-shadow',
-          {
-            'rm-opacity-50': isDragging,
-          },
           className,
         )}
       >
@@ -143,16 +125,67 @@ export const MosaicWindow = <T extends MosaicKey>({
   );
 };
 
-const MosaicWindowToolbar = <T extends MosaicKey>({
+export const MosaicWindow = React.memo(MosaicWindowImpl, (prev, next) => {
+  // Compare path using custom comparator
+  if (!arePathsEqual(prev.path, next.path)) return false;
+
+  // Skip callback props — they are forwarded to the toolbar which stores them
+  // in refs, so new function references don't need to trigger a re-render.
+  const skipKeys = new Set(['path', 'onDragStart', 'onDragEnd']);
+  const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+  for (const key of keys) {
+    if (skipKeys.has(key)) continue;
+    if (prev[key as keyof typeof prev] !== next[key as keyof typeof next]) {
+      return false;
+    }
+  }
+
+  return true;
+}) as typeof MosaicWindowImpl;
+
+const MosaicWindowToolbarImpl = <T extends MosaicKey>({
   title,
   path,
   createNode,
   toolbarControls,
   additionalControls,
-}: MosaicWindowToolbarProps<T>) => {
-  const { mosaicActions } = useContext(MosaicContext);
+  onDragStart,
+  onDragEnd,
+}: MosaicWindowToolbarProps<T> & {
+  onDragStart?: () => void;
+  onDragEnd?: (type: 'drop' | 'reset') => void;
+}) => {
+  const { mosaicActions, mosaicId } = useContext(MosaicContext);
   const { mosaicWindowActions } = useContext(MosaicWindowContext);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Store all callback/array props in refs so useDrag deps stay minimal.
+  // path is an array → new reference on every render even with identical values,
+  // which would cause useDrag to re-register the drag source and kill active drags.
+  const pathRef = useRef(path);
+  pathRef.current = path;
+  const onDragStartRef = useRef(onDragStart);
+  onDragStartRef.current = onDragStart;
+  const onDragEndRef = useRef(onDragEnd);
+  onDragEndRef.current = onDragEnd;
+
+  const [, drag] = useDrag<MosaicDragItem, void, void>(
+    () => ({
+      type: DRAG_ITEM_TYPE,
+      item: () => {
+        if (onDragStartRef.current) setTimeout(onDragStartRef.current, 0);
+        return { path: pathRef.current, mosaicId };
+      },
+      end: (_item, monitor) => {
+        if (monitor.didDrop()) {
+          onDragEndRef.current?.('drop');
+        } else {
+          onDragEndRef.current?.('reset');
+        }
+      },
+    }),
+    [mosaicId],
+  );
 
   const handleExpand = () => {
     mosaicActions.expand(path);
@@ -182,14 +215,12 @@ const MosaicWindowToolbar = <T extends MosaicKey>({
     setIsDrawerOpen(!isDrawerOpen);
   };
 
-  const titleElement = mosaicWindowActions.connectDragSource(
-    <div className="rm-mosaic-window-title rm-font-medium rm-text-sm rm-cursor-move">{title}</div>,
-  );
-
   return (
     <>
       <div className="rm-mosaic-window-toolbar rm-flex rm-items-center rm-justify-between rm-px-4 rm-py-2 rm-bg-mosaic-toolbar rm-border-b rm-border-mosaic-border rm-select-none">
-        {titleElement}
+        <div ref={drag} className="rm-mosaic-window-title rm-font-medium rm-text-sm rm-cursor-move">
+          {title}
+        </div>
         <div className="rm-mosaic-window-controls rm-flex rm-gap-1 rm-items-center">
           {toolbarControls}
           {createNode && (
@@ -248,3 +279,21 @@ const MosaicWindowToolbar = <T extends MosaicKey>({
     </>
   );
 };
+
+const MosaicWindowToolbar = React.memo(MosaicWindowToolbarImpl, (prev, next) => {
+  // Compare path using custom comparator
+  if (!arePathsEqual(prev.path, next.path)) return false;
+
+  // Skip callback props — they are stored in refs inside the component,
+  // so re-renders are not needed to pick up new references.
+  const skipKeys = new Set(['path', 'onDragStart', 'onDragEnd']);
+  const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+  for (const key of keys) {
+    if (skipKeys.has(key)) continue;
+    if (prev[key as keyof typeof prev] !== next[key as keyof typeof next]) {
+      return false;
+    }
+  }
+
+  return true;
+}) as typeof MosaicWindowToolbarImpl;

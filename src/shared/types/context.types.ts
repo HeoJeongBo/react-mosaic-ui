@@ -61,11 +61,6 @@ export interface MosaicWindowActions {
    * Get the path of the current window
    */
   getPath: () => MosaicPath;
-
-  /**
-   * Connect a drag source element
-   */
-  connectDragSource: (element: React.ReactElement) => React.ReactElement | null;
 }
 
 /**

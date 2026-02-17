@@ -9,6 +9,7 @@ export {
   getOtherBranch,
   countNodes,
   getTreeDepth,
+  arePathsEqual,
 } from './mosaic-utilities';
 
 export {

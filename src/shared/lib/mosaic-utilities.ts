@@ -175,3 +175,15 @@ export const getTreeDepth = <T extends MosaicKey>(node: MosaicNode<T> | null): n
 
   return 1;
 };
+
+/**
+ * Compare two paths for equality
+ */
+export const arePathsEqual = (pathA: MosaicPath, pathB: MosaicPath): boolean => {
+  if (pathA === pathB) return true;
+  if (pathA.length !== pathB.length) return false;
+  for (let i = 0; i < pathA.length; i++) {
+    if (pathA[i] !== pathB[i]) return false;
+  }
+  return true;
+};

@@ -179,6 +179,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  user-select: auto;
+  -webkit-user-drag: element;
 }
 
 .rm-mosaic-window-controls {
@@ -230,4 +232,14 @@
 
 .rm-cursor-row-resize {
   cursor: row-resize;
+}
+
+/* Drop targets: invisible and non-interactive by default.
+   Only becomes interactive when parent has rm-dragging class (set imperatively). */
+.rm-mosaic-drop-target {
+  pointer-events: none;
+}
+
+.rm-dragging .rm-mosaic-drop-target {
+  pointer-events: all;
 }

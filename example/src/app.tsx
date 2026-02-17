@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Mosaic,
   type MosaicNode,
@@ -29,7 +29,6 @@ const CONTENT_MAP: Record<ViewId, string> = {
 let windowCount = 0;
 
 export const DemoApp = () => {
-  // 2x2 grid for testing resize isolation
   const [currentNode, setCurrentNode] = useState<MosaicNode<ViewId> | null>({
     direction: 'column',
     splitPercentage: 50,
@@ -46,36 +45,115 @@ export const DemoApp = () => {
       second: 'd',
     },
   });
-  const [dragLog, setDragLog] = useState<string[]>([]);
 
-  const createNode = (): ViewId => {
+  const createNode = useCallback((): ViewId => {
     windowCount++;
     return 'new';
-  };
+  }, []);
 
-  const logDragEvent = (windowId: ViewId, event: string) => {
-    setDragLog((prev) => [...prev.slice(-4), `${TITLE_MAP[windowId]}: ${event}`]);
-  };
+  const autoArrange = useCallback(() => {
+    setCurrentNode((node) => {
+      if (!node) return node;
+      const leaves = getLeaves(node);
+      return createBalancedTreeFromLeaves(leaves);
+    });
+  }, []);
 
-  const autoArrange = () => {
-    if (!currentNode) return;
-    const leaves = getLeaves(currentNode);
-    const balanced = createBalancedTreeFromLeaves(leaves);
-    setCurrentNode(balanced);
-  };
+  const addWindow = useCallback(() => {
+    setCurrentNode((node) => {
+      const newId = createNode();
+      if (!node) return newId;
+      const leaves = getLeaves(node);
+      const newLeaves = [...leaves, newId];
+      return createBalancedTreeFromLeaves(newLeaves);
+    });
+  }, [createNode]);
 
-  const addWindow = () => {
-    const newId = createNode();
-    if (!currentNode) {
-      setCurrentNode(newId);
-      return;
-    }
+  const renderTile = useCallback(
+    (id: ViewId, path: MosaicPath) => (
+      <MosaicWindow
+        path={path}
+        title={TITLE_MAP[id]}
+        createNode={createNode}
+        className="rm-h-full"
+        onDragStart={() => console.log('Drag Start : ', id, path)}
+        onDragEnd={(type) => console.log('Drag End L ', id, type)}
+        additionalControls={
+          <div className="rm-flex rm-flex-col rm-gap-2">
+            <button
+              type="button"
+              className="rm-px-3 rm-py-1 rm-text-xs rm-bg-blue-500 rm-text-white rm-rounded hover:rm-bg-blue-600"
+              onClick={() => alert(`Custom action for ${TITLE_MAP[id]}`)}
+            >
+              Custom Action
+            </button>
+            <button
+              type="button"
+              className="rm-px-3 rm-py-1 rm-text-xs rm-bg-green-500 rm-text-white rm-rounded hover:rm-bg-green-600"
+              onClick={() => console.log('Window info:', { id, path })}
+            >
+              Log Info
+            </button>
+          </div>
+        }
+      >
+        <div className="rm-flex rm-flex-col rm-h-full">
+          <div className="rm-flex-1 rm-flex rm-flex-col rm-items-center rm-justify-center rm-space-y-4">
+            <div className="rm-text-center">
+              <h2 className="rm-text-3xl rm-font-bold rm-mb-2 rm-text-gray-800">{TITLE_MAP[id]}</h2>
+              <div className="rm-inline-block rm-bg-gray-100 rm-px-3 rm-py-1 rm-rounded-full rm-mb-4">
+                <code className="rm-text-xs rm-text-gray-600">ID: {id}</code>
+              </div>
+            </div>
 
-    const leaves = getLeaves(currentNode);
-    const newLeaves = [...leaves, newId];
-    const balanced = createBalancedTreeFromLeaves(newLeaves);
-    setCurrentNode(balanced);
-  };
+            <div className="rm-max-w-md rm-text-center">
+              <p className="rm-text-gray-600 rm-leading-relaxed">{CONTENT_MAP[id]}</p>
+            </div>
+
+            <div className="rm-bg-blue-50 rm-border rm-border-blue-200 rm-rounded-lg rm-p-4 rm-max-w-md">
+              <p className="rm-text-sm rm-font-semibold rm-text-blue-800 rm-mb-2">
+                📍 Current Path:
+              </p>
+              <code className="rm-text-xs rm-text-blue-600 rm-bg-white rm-px-2 rm-py-1 rm-rounded">
+                {path.length > 0 ? path.join(' → ') : 'root'}
+              </code>
+            </div>
+
+            <div className="rm-grid rm-grid-cols-2 rm-gap-3 rm-max-w-md rm-w-full">
+              <div className="rm-bg-purple-50 rm-border rm-border-purple-200 rm-rounded rm-p-3 rm-text-center">
+                <div className="rm-text-2xl rm-mb-1">↻</div>
+                <div className="rm-text-xs rm-text-purple-800 rm-font-medium">Replace</div>
+                <div className="rm-text-xs rm-text-purple-600 rm-mt-1">Replace window</div>
+              </div>
+              <div className="rm-bg-green-50 rm-border rm-border-green-200 rm-rounded rm-p-3 rm-text-center">
+                <div className="rm-text-2xl rm-mb-1">⊞</div>
+                <div className="rm-text-xs rm-text-green-800 rm-font-medium">Split</div>
+                <div className="rm-text-xs rm-text-green-600 rm-mt-1">Divide window</div>
+              </div>
+              <div className="rm-bg-orange-50 rm-border rm-border-orange-200 rm-rounded rm-p-3 rm-text-center">
+                <div className="rm-text-2xl rm-mb-1">⛶</div>
+                <div className="rm-text-xs rm-text-orange-800 rm-font-medium">Expand</div>
+                <div className="rm-text-xs rm-text-orange-600 rm-mt-1">Maximize window</div>
+              </div>
+              <div className="rm-bg-red-50 rm-border rm-border-red-200 rm-rounded rm-p-3 rm-text-center">
+                <div className="rm-text-2xl rm-mb-1">✕</div>
+                <div className="rm-text-xs rm-text-red-800 rm-font-medium">Close</div>
+                <div className="rm-text-xs rm-text-red-600 rm-mt-1">Remove window</div>
+              </div>
+              <div className="rm-bg-indigo-50 rm-border rm-border-indigo-200 rm-rounded rm-p-3 rm-text-center rm-col-span-2">
+                <div className="rm-text-2xl rm-mb-1">⋯</div>
+                <div className="rm-text-xs rm-text-indigo-800 rm-font-medium">More</div>
+                <div className="rm-text-xs rm-text-indigo-600 rm-mt-1">
+                  Additional controls drawer
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </MosaicWindow>
+    ),
+    [createNode],
+  );
 
   return (
     <div className="rm-w-screen rm-h-screen rm-flex rm-flex-col rm-bg-gray-900 flex-col h-full">
@@ -112,110 +190,9 @@ export const DemoApp = () => {
         </div>
       </div>
 
-      <div className="rm-flex-1 rm-p-4 rm-bg-gray-900 h-full">
+      <div className="rm-flex-1 rm-p-4 rm-bg-gray-900 h-full rm-relative">
         <Mosaic<ViewId>
-          renderTile={(id: ViewId, path: MosaicPath) => (
-            <MosaicWindow
-              path={path}
-              title={TITLE_MAP[id]}
-              createNode={createNode}
-              className="rm-h-full"
-              onDragStart={() => logDragEvent(id, 'Drag started')}
-              onDragEnd={(type: 'drop' | 'reset') => logDragEvent(id, `Drag ended: ${type}`)}
-              additionalControls={
-                <div className="rm-flex rm-flex-col rm-gap-2">
-                  <button
-                    type="button"
-                    className="rm-px-3 rm-py-1 rm-text-xs rm-bg-blue-500 rm-text-white rm-rounded hover:rm-bg-blue-600"
-                    onClick={() => alert(`Custom action for ${TITLE_MAP[id]}`)}
-                  >
-                    Custom Action
-                  </button>
-                  <button
-                    type="button"
-                    className="rm-px-3 rm-py-1 rm-text-xs rm-bg-green-500 rm-text-white rm-rounded hover:rm-bg-green-600"
-                    onClick={() => console.log('Window info:', { id, path })}
-                  >
-                    Log Info
-                  </button>
-                </div>
-              }
-            >
-              <div className="rm-flex rm-flex-col rm-h-full">
-                <div className="rm-flex-1 rm-flex rm-flex-col rm-items-center rm-justify-center rm-space-y-4">
-                  <div className="rm-text-center">
-                    <h2 className="rm-text-3xl rm-font-bold rm-mb-2 rm-text-gray-800">
-                      {TITLE_MAP[id]}
-                    </h2>
-                    <div className="rm-inline-block rm-bg-gray-100 rm-px-3 rm-py-1 rm-rounded-full rm-mb-4">
-                      <code className="rm-text-xs rm-text-gray-600">ID: {id}</code>
-                    </div>
-                  </div>
-
-                  <div className="rm-max-w-md rm-text-center">
-                    <p className="rm-text-gray-600 rm-leading-relaxed">{CONTENT_MAP[id]}</p>
-                  </div>
-
-                  <div className="rm-bg-blue-50 rm-border rm-border-blue-200 rm-rounded-lg rm-p-4 rm-max-w-md">
-                    <p className="rm-text-sm rm-font-semibold rm-text-blue-800 rm-mb-2">
-                      📍 Current Path:
-                    </p>
-                    <code className="rm-text-xs rm-text-blue-600 rm-bg-white rm-px-2 rm-py-1 rm-rounded">
-                      {path.length > 0 ? path.join(' → ') : 'root'}
-                    </code>
-                  </div>
-
-                  {dragLog.length > 0 && (
-                    <div className="rm-bg-yellow-50 rm-border rm-border-yellow-200 rm-rounded-lg rm-p-4 rm-max-w-md rm-w-full">
-                      <p className="rm-text-sm rm-font-semibold rm-text-yellow-800 rm-mb-2">
-                        🎯 Recent Drag Events:
-                      </p>
-                      <div className="rm-space-y-1">
-                        {dragLog.map((log) => (
-                          <div
-                            key={`${log}-${Math.random()}`}
-                            className="rm-text-xs rm-text-yellow-700 rm-bg-white rm-px-2 rm-py-1 rm-rounded"
-                          >
-                            {log}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="rm-grid rm-grid-cols-2 rm-gap-3 rm-max-w-md rm-w-full">
-                    <div className="rm-bg-purple-50 rm-border rm-border-purple-200 rm-rounded rm-p-3 rm-text-center">
-                      <div className="rm-text-2xl rm-mb-1">↻</div>
-                      <div className="rm-text-xs rm-text-purple-800 rm-font-medium">Replace</div>
-                      <div className="rm-text-xs rm-text-purple-600 rm-mt-1">Replace window</div>
-                    </div>
-                    <div className="rm-bg-green-50 rm-border rm-border-green-200 rm-rounded rm-p-3 rm-text-center">
-                      <div className="rm-text-2xl rm-mb-1">⊞</div>
-                      <div className="rm-text-xs rm-text-green-800 rm-font-medium">Split</div>
-                      <div className="rm-text-xs rm-text-green-600 rm-mt-1">Divide window</div>
-                    </div>
-                    <div className="rm-bg-orange-50 rm-border rm-border-orange-200 rm-rounded rm-p-3 rm-text-center">
-                      <div className="rm-text-2xl rm-mb-1">⛶</div>
-                      <div className="rm-text-xs rm-text-orange-800 rm-font-medium">Expand</div>
-                      <div className="rm-text-xs rm-text-orange-600 rm-mt-1">Maximize window</div>
-                    </div>
-                    <div className="rm-bg-red-50 rm-border rm-border-red-200 rm-rounded rm-p-3 rm-text-center">
-                      <div className="rm-text-2xl rm-mb-1">✕</div>
-                      <div className="rm-text-xs rm-text-red-800 rm-font-medium">Close</div>
-                      <div className="rm-text-xs rm-text-red-600 rm-mt-1">Remove window</div>
-                    </div>
-                    <div className="rm-bg-indigo-50 rm-border rm-border-indigo-200 rm-rounded rm-p-3 rm-text-center rm-col-span-2">
-                      <div className="rm-text-2xl rm-mb-1">⋯</div>
-                      <div className="rm-text-xs rm-text-indigo-800 rm-font-medium">More</div>
-                      <div className="rm-text-xs rm-text-indigo-600 rm-mt-1">
-                        Additional controls drawer
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </MosaicWindow>
-          )}
+          renderTile={renderTile}
           value={currentNode}
           onChange={setCurrentNode}
           className="rm-h-full rm-rounded-lg rm-overflow-hidden rm-shadow-2xl"
