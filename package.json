@@ -1,5 +1,5 @@
 {
-	"name": "react-mosaic-ui",
+	"name": "@heojeongbo/react-mosaic-ui",
 	"version": "2.0.0",
 	"description": "A modern React tiling window manager with FSD architecture, Rollup bundling, and Tailwind CSS v4",
 	"type": "module",
@@ -43,8 +43,16 @@
 		"tailwind",
 		"fsd"
 	],
-	"author": "",
+	"author": "HeoJeongBo <heojeongbo@gmail.com>",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/HeoJeongBo/react-mosaic-ui.git"
+	},
+	"homepage": "https://github.com/HeoJeongBo/react-mosaic-ui#readme",
+	"bugs": {
+		"url": "https://github.com/HeoJeongBo/react-mosaic-ui/issues"
+	},
 	"peerDependencies": {
 		"react": "^18.0.0 || ^19.0.0",
 		"react-dom": "^18.0.0 || ^19.0.0"
