@@ -15,7 +15,8 @@
   },
   "npm": {
     "publish": true,
-    "skipChecks": false
+    "skipChecks": false,
+    "access": "public"
   },
   "hooks": {
     "before:init": ["bun run lint", "bun run typecheck", "bun test"],
