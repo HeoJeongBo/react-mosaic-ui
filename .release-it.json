@@ -13,10 +13,10 @@
     "releaseName": "Release ${version}",
     "autoGenerate": true
   },
-  "npm": {
+   "npm": {
     "publish": true,
-    "skipChecks": false,
-    "access": "public"
+    "publishPath": ".",
+    "publishArgs": ["--access", "public"]
   },
   "hooks": {
     "before:init": ["bun run lint", "bun run typecheck", "bun test"],
