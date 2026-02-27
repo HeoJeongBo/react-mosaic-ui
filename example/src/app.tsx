@@ -1,4 +1,3 @@
-import { useCallback, useState } from 'react';
 import {
   Mosaic,
   type MosaicNode,
@@ -7,6 +6,7 @@ import {
   createBalancedTreeFromLeaves,
   getLeaves,
 } from '@heojeongbo/react-mosaic-ui';
+import { useCallback, useState } from 'react';
 
 type ViewId = 'a' | 'b' | 'c' | 'd' | 'new';
 
