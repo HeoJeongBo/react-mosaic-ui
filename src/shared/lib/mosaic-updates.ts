@@ -2,6 +2,7 @@ import { produce } from 'immer';
 import type { MosaicKey, MosaicNode, MosaicPath, MosaicUpdate, MosaicUpdateSpec } from '../types';
 import { MosaicDropTargetPosition } from '../types';
 import {
+  arePathsEqual,
   getAndAssertNodeAtPathExists,
   getNodeAtPath,
   getOtherBranch,
@@ -158,7 +159,7 @@ export const createDragToUpdates = <T extends MosaicKey>(
   }
 
   // Don't allow dropping on itself
-  if (JSON.stringify(sourcePath) === JSON.stringify(destinationPath)) {
+  if (arePathsEqual(sourcePath, destinationPath)) {
     return [];
   }
 

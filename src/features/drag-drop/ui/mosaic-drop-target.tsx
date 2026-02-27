@@ -2,7 +2,7 @@ import { createDragToUpdates } from '@/shared/lib';
 import { MosaicContext } from '@/shared/lib/context';
 import type { MosaicDragItem, MosaicPath } from '@/shared/types';
 import { MosaicDropTargetPosition } from '@/shared/types';
-import React, { useContext } from 'react';
+import React, { useContext, useRef } from 'react';
 import { useDrop } from 'react-dnd';
 
 export interface MosaicDropTargetProps {
@@ -15,23 +15,27 @@ const DRAG_ITEM_TYPE = 'MosaicWindow';
 
 const MosaicDropTargetImpl = ({ position, path, mosaicId }: MosaicDropTargetProps) => {
   const { mosaicActions } = useContext(MosaicContext);
+  const pathRef = useRef(path);
+  pathRef.current = path;
+  const mosaicActionsRef = useRef(mosaicActions);
+  mosaicActionsRef.current = mosaicActions;
 
   const [{ isOver }, drop] = useDrop<MosaicDragItem, void, { isOver: boolean }>(
     () => ({
       accept: DRAG_ITEM_TYPE,
       canDrop: (item) => item.mosaicId === mosaicId,
       drop: (item) => {
-        const root = mosaicActions.getRoot();
+        const root = mosaicActionsRef.current.getRoot();
         if (!root) return;
 
-        const updates = createDragToUpdates(root, item.path, path, position);
-        mosaicActions.updateTree(updates);
+        const updates = createDragToUpdates(root, item.path, pathRef.current, position);
+        mosaicActionsRef.current.updateTree(updates);
       },
       collect: (monitor) => ({
         isOver: monitor.isOver() && monitor.canDrop(),
       }),
     }),
-    [mosaicId, mosaicActions, path, position],
+    [mosaicId, position],
   );
 
   return (

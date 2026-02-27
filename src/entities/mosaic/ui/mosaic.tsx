@@ -70,6 +70,7 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
     onChange,
     onRelease,
     className = 'react-mosaic',
+    resize,
     zeroStateView,
     mosaicId = 'default-mosaic',
   } = props;
@@ -217,6 +218,7 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
             <MosaicRoot
               root={currentValue}
               renderTile={renderTile}
+              {...(resize !== undefined && { resize })}
               className="rm-w-full rm-h-full"
             />
           )}

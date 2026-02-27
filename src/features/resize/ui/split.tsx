@@ -1,6 +1,6 @@
 import type { MosaicDirection } from '@/shared/types';
 import classNames from 'classnames';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface SplitProps {
   direction: MosaicDirection;
@@ -25,21 +25,61 @@ export const Split = ({
   minimumPaneSizePercentage = 20,
 }: SplitProps) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [livePercentage, setLivePercentage] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const latestPercentageRef = useRef(percentage);
+  const rafIdRef = useRef<number | null>(null);
+
+  const flushPendingChange = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+      onChange(latestPercentageRef.current);
+    }
+  }, [onChange]);
+
+  const scheduleChange = useCallback(
+    (nextPercentage: number) => {
+      latestPercentageRef.current = nextPercentage;
+      setLivePercentage(nextPercentage);
+
+      if (rafIdRef.current !== null) return;
+
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafIdRef.current = null;
+        onChange(latestPercentageRef.current);
+      });
+    },
+    [onChange],
+  );
+
+  useEffect(() => {
+    if (!isDragging) {
+      latestPercentageRef.current = percentage;
+    }
+  }, [isDragging, percentage]);
+
+  useEffect(
+    () => () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    },
+    [],
+  );
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      setIsDragging(true);
-
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const startPercentage = percentage;
 
       // Get parent container size
       const parent = containerRef.current?.parentElement;
       if (!parent) return;
 
+      setIsDragging(true);
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startPercentage = percentage;
       const parentRect = parent.getBoundingClientRect();
       const parentWidth = boundingBox.right - boundingBox.left;
       const parentHeight = boundingBox.bottom - boundingBox.top;
@@ -69,11 +109,13 @@ export const Split = ({
         );
 
         latestPercentage = newPercentage;
-        onChange(newPercentage);
+        scheduleChange(newPercentage);
       };
 
       const handleMouseUp = () => {
+        flushPendingChange();
         setIsDragging(false);
+        setLivePercentage(null);
         onRelease?.(latestPercentage);
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
@@ -82,24 +124,30 @@ export const Split = ({
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     },
-    [direction, percentage, onChange, onRelease, minimumPaneSizePercentage, boundingBox],
+    [
+      direction,
+      percentage,
+      onRelease,
+      minimumPaneSizePercentage,
+      boundingBox,
+      flushPendingChange,
+      scheduleChange,
+    ],
   );
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (e.touches.length !== 1) return;
 
-      const touch = e.touches[0]!;
-      setIsDragging(true);
-
-      const startX = touch.clientX;
-      const startY = touch.clientY;
-      const startPercentage = percentage;
-
       // Get parent container size
       const parent = containerRef.current?.parentElement;
       if (!parent) return;
 
+      const touch = e.touches[0]!;
+      setIsDragging(true);
+      const startX = touch.clientX;
+      const startY = touch.clientY;
+      const startPercentage = percentage;
       const parentRect = parent.getBoundingClientRect();
       const parentWidth = boundingBox.right - boundingBox.left;
       const parentHeight = boundingBox.bottom - boundingBox.top;
@@ -109,6 +157,7 @@ export const Split = ({
 
       const handleTouchMove = (moveEvent: TouchEvent) => {
         if (moveEvent.touches.length !== 1) return;
+        moveEvent.preventDefault();
 
         const moveTouch = moveEvent.touches[0]!;
         let newPercentage: number;
@@ -131,26 +180,37 @@ export const Split = ({
         );
 
         latestPercentage = newPercentage;
-        onChange(newPercentage);
+        scheduleChange(newPercentage);
       };
 
       const handleTouchEnd = () => {
+        flushPendingChange();
         setIsDragging(false);
+        setLivePercentage(null);
         onRelease?.(latestPercentage);
         document.removeEventListener('touchmove', handleTouchMove);
         document.removeEventListener('touchend', handleTouchEnd);
       };
 
-      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
       document.addEventListener('touchend', handleTouchEnd);
     },
-    [direction, percentage, onChange, onRelease, minimumPaneSizePercentage, boundingBox],
+    [
+      direction,
+      percentage,
+      onRelease,
+      minimumPaneSizePercentage,
+      boundingBox,
+      flushPendingChange,
+      scheduleChange,
+    ],
   );
 
   const isRow = direction === 'row';
+  const effectivePercentage = livePercentage ?? percentage;
   const splitPosition = isRow
-    ? boundingBox.left + ((boundingBox.right - boundingBox.left) * percentage) / 100
-    : boundingBox.top + ((boundingBox.bottom - boundingBox.top) * percentage) / 100;
+    ? boundingBox.left + ((boundingBox.right - boundingBox.left) * effectivePercentage) / 100
+    : boundingBox.top + ((boundingBox.bottom - boundingBox.top) * effectivePercentage) / 100;
 
   return (
     <div
