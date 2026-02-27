@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      'react-mosaic-ui': path.resolve(__dirname, '../src'),
+      '@heojeongbo/react-mosaic-ui': path.resolve(__dirname, '../src'),
       '@': path.resolve(__dirname, '../src'),
     },
   },

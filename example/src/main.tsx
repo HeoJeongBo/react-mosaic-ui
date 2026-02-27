@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { DemoApp } from './app';
 import './index.css';
-import 'react-mosaic-ui/styles/index.css';
+import '@heojeongbo/react-mosaic-ui/styles/index.css';
 
 const rootElement = document.getElementById('root');
 

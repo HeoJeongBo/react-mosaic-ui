@@ -90,8 +90,8 @@ Open `http://localhost:5173` in your browser.
 ### Basic Usage
 
 ```typescript
-import { Mosaic, MosaicWindow, type MosaicNode } from 'react-mosaic-ui';
-import 'react-mosaic-ui/styles.css';
+import { Mosaic, MosaicWindow, type MosaicNode } from '@heojeongbo/react-mosaic-ui';
+import '@heojeongbo/react-mosaic-ui/styles.css';
 
 type ViewId = 'a' | 'b' | 'c';
 
@@ -128,7 +128,7 @@ import {
   MosaicWindow,
   createBalancedTreeFromLeaves,
   getLeaves,
-} from 'react-mosaic-ui';
+} from '@heojeongbo/react-mosaic-ui';
 
 function App() {
   const [tree, setTree] = useState<MosaicNode<string> | null>(null);

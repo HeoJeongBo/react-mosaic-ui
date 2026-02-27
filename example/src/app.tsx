@@ -6,7 +6,7 @@ import {
   MosaicWindow,
   createBalancedTreeFromLeaves,
   getLeaves,
-} from 'react-mosaic-ui';
+} from '@heojeongbo/react-mosaic-ui';
 
 type ViewId = 'a' | 'b' | 'c' | 'd' | 'new';
 
