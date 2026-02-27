@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.2](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.1.1...v2.1.2) (2026-02-27)
+
+### Features
+
+* improve performance ([f6f5d27](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/f6f5d27c65d942a93187b84500e47b0a3ac935ad))
+
+### Bug Fixes
+
+* drop target logic ([6018efd](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/6018efdca0286f08da5c630bd67395a517b1dd5f))
+
 ## [2.1.1](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.1.0...v2.1.1) (2026-02-27)
 
 ### Bug Fixes
