@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.1.0...v2.1.1) (2026-02-27)
+
+### Bug Fixes
+
+* biome issue ([9ef0d42](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/9ef0d4280831a755668f8c0ba3247f4ae02a8d29))
+* change package name ([21cadbf](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/21cadbf9b6b23e57c61abaa1017485cb370dec4f))
+* tsconfig ([ebcc4d2](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/ebcc4d20238875931fa8c34a241034a7bfdec330))
+
 ## [2.1.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v2.0.0...v2.1.0) (2026-02-21)
 
 ### Bug Fixes
