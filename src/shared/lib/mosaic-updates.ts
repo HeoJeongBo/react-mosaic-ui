@@ -263,9 +263,9 @@ export const createDragToUpdates = <T extends MosaicKey>(
       const sourceBranch = sourcePath[sourceParentPath.length];
       const destBranchAtSameLevel = destinationPath[sourceParentPath.length];
 
-      // If both are at the same level under source's parent
-      if (sourceBranch === destBranchAtSameLevel) {
-        // Destination is a descendant of source's sibling
+      // Destination is in source's sibling subtree. After removal, that branch
+      // segment disappears because source's parent collapses to the sibling.
+      if (sourceBranch !== destBranchAtSameLevel) {
         // After removal, destination moves up in the path
         adjustedDestinationPath = [
           ...sourceParentPath,

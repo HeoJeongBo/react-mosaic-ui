@@ -23,12 +23,18 @@ const MosaicDropTargetImpl = ({ position, path, mosaicId }: MosaicDropTargetProp
   const [{ isOver }, drop] = useDrop<MosaicDragItem, void, { isOver: boolean }>(
     () => ({
       accept: DRAG_ITEM_TYPE,
-      canDrop: (item) => item.mosaicId === mosaicId,
+      canDrop: (item) => {
+        if (item.mosaicId !== mosaicId) return false;
+        const root = mosaicActionsRef.current.getRoot();
+        if (!root) return false;
+        return createDragToUpdates(root, item.path, pathRef.current, position).length > 0;
+      },
       drop: (item) => {
         const root = mosaicActionsRef.current.getRoot();
         if (!root) return;
 
         const updates = createDragToUpdates(root, item.path, pathRef.current, position);
+        if (updates.length === 0) return;
         mosaicActionsRef.current.updateTree(updates);
       },
       collect: (monitor) => ({

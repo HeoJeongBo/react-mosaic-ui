@@ -298,6 +298,54 @@ describe('mosaic-updates', () => {
       // This should create a valid result
       expect(result).toBeDefined();
     });
+
+    it('should adjust destination path when destination is in source sibling subtree', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: {
+          direction: 'column',
+          first: {
+            direction: 'row',
+            first: 'a',
+            second: 'c',
+            splitPercentage: 50,
+          },
+          second: 'b',
+          splitPercentage: 50,
+        },
+        second: 'd',
+        splitPercentage: 50,
+      };
+
+      // Move 'b' to the right of nested 'c'
+      // source parent path ['first'] collapses after removal, so destination
+      // path must be adjusted from ['first', 'first', 'second'] -> ['first', 'second']
+      const updates = createDragToUpdates(
+        root,
+        ['first', 'second'],
+        ['first', 'first', 'second'],
+        MosaicDropTargetPosition.RIGHT,
+      );
+
+      const result = updateTree(root, updates);
+
+      expect(result).toEqual({
+        direction: 'row',
+        first: {
+          direction: 'row',
+          first: 'a',
+          second: {
+            direction: 'row',
+            first: 'c',
+            second: 'b',
+            splitPercentage: 50,
+          },
+          splitPercentage: 50,
+        },
+        second: 'd',
+        splitPercentage: 50,
+      });
+    });
   });
 
   describe('createExpandUpdate', () => {
