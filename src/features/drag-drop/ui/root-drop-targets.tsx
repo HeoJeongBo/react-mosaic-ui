@@ -26,11 +26,7 @@ export const RootDropTargets = () => {
           mosaicId={mosaicId}
         />
         <MosaicDropTarget position={MosaicDropTargetPosition.LEFT} path={[]} mosaicId={mosaicId} />
-        <MosaicDropTarget
-          position={MosaicDropTargetPosition.RIGHT}
-          path={[]}
-          mosaicId={mosaicId}
-        />
+        <MosaicDropTarget position={MosaicDropTargetPosition.RIGHT} path={[]} mosaicId={mosaicId} />
       </div>
       <div
         className="rm-viewport-edge-drop-targets"

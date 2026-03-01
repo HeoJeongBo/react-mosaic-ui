@@ -1,8 +1,2 @@
-# Run linting
-bun run lint
-
-# Run type checking
-bun run typecheck
-
-# Run tests
-bun test
+# Run all repository checks before commit
+bun run check
