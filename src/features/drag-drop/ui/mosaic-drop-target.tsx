@@ -9,11 +9,17 @@ export interface MosaicDropTargetProps {
   position: MosaicDropTargetPosition;
   path: MosaicPath;
   mosaicId: string;
+  hitArea?: 'window' | 'viewport-edge';
 }
 
 const DRAG_ITEM_TYPE = 'MosaicWindow';
 
-const MosaicDropTargetImpl = ({ position, path, mosaicId }: MosaicDropTargetProps) => {
+const MosaicDropTargetImpl = ({
+  position,
+  path,
+  mosaicId,
+  hitArea = 'window',
+}: MosaicDropTargetProps) => {
   const { mosaicActions } = useContext(MosaicContext);
   const pathRef = useRef(path);
   pathRef.current = path;
@@ -51,7 +57,7 @@ const MosaicDropTargetImpl = ({ position, path, mosaicId }: MosaicDropTargetProp
       onDrop={(e) => e.preventDefault()}
       className="rm-mosaic-drop-target rm-absolute"
       style={{
-        ...getDropTargetStyle(position, isOver),
+        ...getDropTargetStyle(position, isOver, hitArea),
         opacity: isOver ? 1 : 0,
         backgroundColor: 'rgba(59, 130, 246, 0.2)',
         border: '2px solid rgba(59, 130, 246, 0.6)',
@@ -64,24 +70,36 @@ const MosaicDropTargetImpl = ({ position, path, mosaicId }: MosaicDropTargetProp
 
 export const MosaicDropTarget = React.memo(MosaicDropTargetImpl);
 
-const getDropTargetStyle = (
+const EDGE_HIT_SIZE = '30%';
+const EDGE_HOVER_SIZE = '50%';
+const VIEWPORT_EDGE_HIT_SIZE = '24px';
+
+export const getDropTargetStyle = (
   position: MosaicDropTargetPosition,
   isOver: boolean,
+  hitArea: 'window' | 'viewport-edge' = 'window',
 ): React.CSSProperties => {
-  // Hit area: 25% (non-overlapping, so all four zones are independently reachable)
-  // Hover state: expands to 50% visual feedback
-  // This matches react-mosaic's original 30%/50% pattern.
-  const size = isOver ? '50%' : '25%';
+  // Match the original react-mosaic behavior:
+  // default edge hit area is 30%, and hovered preview expands to 50%.
+  const size =
+    hitArea === 'viewport-edge'
+      ? isOver
+        ? EDGE_HOVER_SIZE
+        : VIEWPORT_EDGE_HIT_SIZE
+      : isOver
+        ? EDGE_HOVER_SIZE
+        : EDGE_HIT_SIZE;
   const baseStyle = { zIndex: 1000 };
+  const oppositeInset = `calc(100% - ${size})`;
 
   switch (position) {
     case MosaicDropTargetPosition.TOP:
-      return { ...baseStyle, top: 0, left: 0, right: 0, height: size };
+      return { ...baseStyle, top: 0, left: 0, right: 0, bottom: oppositeInset };
     case MosaicDropTargetPosition.BOTTOM:
-      return { ...baseStyle, bottom: 0, left: 0, right: 0, height: size };
+      return { ...baseStyle, top: oppositeInset, left: 0, right: 0, bottom: 0 };
     case MosaicDropTargetPosition.LEFT:
-      return { ...baseStyle, top: 0, bottom: 0, left: 0, width: size };
+      return { ...baseStyle, top: 0, right: oppositeInset, bottom: 0, left: 0 };
     case MosaicDropTargetPosition.RIGHT:
-      return { ...baseStyle, top: 0, bottom: 0, right: 0, width: size };
+      return { ...baseStyle, top: 0, right: 0, bottom: 0, left: oppositeInset };
   }
 };

@@ -258,3 +258,18 @@
 .rm-dragging .rm-root-drop-targets .rm-mosaic-drop-target {
   pointer-events: all;
 }
+
+/* Viewport-edge drop targets: keep hidden unless dragging. These allow
+   dropping on browser viewport edges while preserving existing window logic. */
+.rm-viewport-edge-drop-targets {
+  display: none;
+}
+
+.rm-dragging .rm-viewport-edge-drop-targets {
+  display: block;
+  pointer-events: none;
+}
+
+.rm-dragging .rm-viewport-edge-drop-targets .rm-mosaic-drop-target {
+  pointer-events: all;
+}
