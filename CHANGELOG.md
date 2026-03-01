@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.1.2...v2.2.0) (2026-03-01)
+
+### Features
+
+* add view port edge case ([68524a2](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/68524a2766304f333b88f15f5381d29f136e9c0b))
+
+### Bug Fixes
+
+* add lint huskty ([cb7e62c](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/cb7e62c52f29707fd53950081e966577d5b98833))
+
 ## [2.1.2](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.1.1...v2.1.2) (2026-02-27)
 
 ### Features
