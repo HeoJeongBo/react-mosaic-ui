@@ -1,212 +1,258 @@
-# React Mosaic UI
+# react-mosaic-ui
 
-A modern React tiling window manager built with FSD architecture, TypeScript, and Tailwind CSS v4.
+A modern React tiling window manager with drag-and-drop, resizable splits, and full TypeScript support.
 
 > Inspired by [react-mosaic](https://github.com/nomcopter/react-mosaic)
 
-## 📚 Documentation
-
-### Core Guides
-- **[Claude Guide](./docs/claude.md)**: Main guide for working with Claude Code
-- **[FSD Architecture](./docs/fsd-architecture.md)**: Feature-Sliced Design architecture details
-- **[Naming Convention](./docs/naming-convention.md)**: File, variable, and function naming rules
-- **[Clean Code Guide](./docs/clean-code-guide.md)**: Clean code principles and patterns
-- **[TypeScript Guide](./docs/typescript-guide.md)**: Type definitions and TypeScript best practices
-- **[Testing Guide](./docs/testing-guide.md)**: Test writing and `.test.ts` file rules
-
-## 🏗️ Project Structure
-
-```
-src/
-├── shared/       # Reusable types, utilities, UI
-│   ├── types/    # Common type definitions
-│   ├── lib/      # Utility functions
-│   └── ui/       # Basic UI components
-├── entities/     # Business entities
-│   ├── mosaic/   # Mosaic main component
-│   └── window/   # MosaicWindow component
-├── features/     # Business features
-│   ├── drag-drop/    # Drag and drop
-│   ├── resize/       # Resizing
-│   └── window-controls/  # Window controls
-└── widgets/      # Complex UI blocks
-```
-
-## 🎯 Core Principles
-
-### 1. File Naming
-- **Kebab-case**: `user-profile.tsx`, `add-to-cart.ts`
-- **Test files**: `my-component.test.ts`
-- **Type definitions**: `my-component.types.ts`
-
-### 2. FSD Layers
-```
-shared → entities → features → widgets
-```
-
-### 3. Tailwind CSS v4
-- **Prefix**: `rm-` (react-mosaic)
-- **Scoped**: Only applied within `.react-mosaic` class
-- **CSS Variables**: User customizable
-
-## 🚀 Getting Started
-
-### Installation
+## Installation
 
 ```bash
-bun install
+# npm
+npm install @heojeongbo/react-mosaic-ui
+
+# yarn
+yarn add @heojeongbo/react-mosaic-ui
+
+# pnpm
+pnpm add @heojeongbo/react-mosaic-ui
+
+# bun
+bun add @heojeongbo/react-mosaic-ui
 ```
 
-### Development
+**Peer dependencies** (if not already installed):
 
 ```bash
-# Build library
-bun run build
-
-# Run example (recommended)
-cd example && bun install && bun run dev
-
-# Run tests
-bun run test
-
-# Type checking
-bun run typecheck
+bun add react react-dom
 ```
 
-### Example App
+## Quick Start
 
-The example app runs in a separate directory:
-
-```bash
-cd example
-bun install
-bun run dev
-```
-
-Open `http://localhost:5173` in your browser.
-
-## 📦 Usage
-
-### Basic Usage
-
-```typescript
+```tsx
+import { useState } from 'react';
 import { Mosaic, MosaicWindow, type MosaicNode } from '@heojeongbo/react-mosaic-ui';
 import '@heojeongbo/react-mosaic-ui/styles.css';
 
-type ViewId = 'a' | 'b' | 'c';
+type ViewId = 'editor' | 'preview' | 'terminal';
 
-function App() {
-  const [tree, setTree] = useState<MosaicNode<ViewId>>({
+const TITLES: Record<ViewId, string> = {
+  editor: 'Editor',
+  preview: 'Preview',
+  terminal: 'Terminal',
+};
+
+export default function App() {
+  const [tree, setTree] = useState<MosaicNode<ViewId> | null>({
     direction: 'row',
-    first: 'a',
+    first: 'editor',
     second: {
       direction: 'column',
-      first: 'b',
-      second: 'c',
+      first: 'preview',
+      second: 'terminal',
+      splitPercentage: 60,
     },
+    splitPercentage: 60,
   });
 
   return (
-    <Mosaic<ViewId>
-      renderTile={(id, path) => (
-        <MosaicWindow path={path} title={`Window ${id}`}>
-          <div>Content for {id}</div>
-        </MosaicWindow>
-      )}
-      value={tree}
-      onChange={setTree}
-    />
+    <div style={{ width: '100vw', height: '100vh' }}>
+      <Mosaic<ViewId>
+        value={tree}
+        onChange={setTree}
+        renderTile={(id, path) => (
+          <MosaicWindow title={TITLES[id]} path={path} createNode={() => 'editor'}>
+            <div style={{ padding: 16 }}>Content: {id}</div>
+          </MosaicWindow>
+        )}
+      />
+    </div>
   );
 }
 ```
 
-### Advanced Usage
+## Core Concepts
 
-```typescript
+### Tree Structure
+
+A layout is represented as a binary tree. Leaf nodes are tile IDs (`string | number`), and parent nodes describe how to split the space.
+
+```ts
+type MosaicNode<T> = T | MosaicParent<T>;
+
+interface MosaicParent<T> {
+  direction: 'row' | 'column'; // row = left/right split, column = top/bottom split
+  first: MosaicNode<T>;
+  second: MosaicNode<T>;
+  splitPercentage?: number;    // 0–100, defaults to 50
+}
+```
+
+**Example tree** (3 tiles):
+
+```ts
+const tree: MosaicNode<string> = {
+  direction: 'row',
+  first: 'a',
+  second: {
+    direction: 'column',
+    first: 'b',
+    second: 'c',
+  },
+};
+```
+
+### Controlled vs Uncontrolled
+
+**Controlled** — you own the state:
+
+```tsx
+const [tree, setTree] = useState<MosaicNode<string> | null>(initialTree);
+
+<Mosaic value={tree} onChange={setTree} renderTile={renderTile} />
+```
+
+**Uncontrolled** — the component manages state internally:
+
+```tsx
+<Mosaic initialValue={initialTree} renderTile={renderTile} />
+```
+
+## API Reference
+
+### `<Mosaic>`
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `renderTile` | `(id: T, path: MosaicPath) => JSX.Element` | required | Renders each leaf tile |
+| `value` | `MosaicNode<T> \| null` | — | Controlled tree value |
+| `initialValue` | `MosaicNode<T> \| null` | — | Uncontrolled initial value |
+| `onChange` | `(node: MosaicNode<T> \| null) => void` | — | Called on every tree change |
+| `onRelease` | `(node: MosaicNode<T> \| null) => void` | — | Called when drag/resize is released |
+| `className` | `string` | — | Extra class on the root element |
+| `zeroStateView` | `JSX.Element` | built-in | Shown when tree is `null` |
+| `mosaicId` | `string` | auto | ID for multi-mosaic DnD isolation |
+| `createNode` | `() => T \| Promise<T>` | — | Factory for new tiles (enables split/replace) |
+| `resize` | `ResizeOptions` | — | Override minimum pane size |
+
+### `<MosaicWindow>`
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `title` | `string` | required | Toolbar title |
+| `path` | `MosaicPath` | required | Position in the tree (passed from `renderTile`) |
+| `children` | `ReactNode` | required | Window body content |
+| `createNode` | `() => T \| Promise<T>` | — | Enables Split and Replace toolbar buttons |
+| `draggable` | `boolean` | `true` | Whether the window can be dragged |
+| `toolbarControls` | `ReactNode` | — | Replaces the default toolbar buttons entirely |
+| `additionalControls` | `ReactNode` | — | Extra controls shown in a collapsible drawer |
+| `renderToolbar` | `(props, defaultToolbar) => ReactNode` | — | Full toolbar override (receives default as second arg) |
+| `onDragStart` | `() => void` | — | Called when drag begins |
+| `onDragEnd` | `(type: 'drop' \| 'reset') => void` | — | Called when drag ends |
+| `className` | `string` | — | Extra class on the window element |
+
+**Built-in toolbar buttons** (visible when `createNode` is provided):
+
+| Button | Description |
+|--------|-------------|
+| Split | Splits the window in half |
+| Replace | Replaces the window with a new tile |
+| Expand | Expands to 70% of the parent |
+| Close | Removes the window from the layout |
+
+### Utility Functions
+
+```ts
 import {
-  Mosaic,
-  MosaicWindow,
-  createBalancedTreeFromLeaves,
-  getLeaves,
+  // Tree inspection
+  getLeaves,                    // Get all leaf IDs in order
+  isParent,                     // Check if a node is a parent
+  getNodeAtPath,                // Get node at a given path
+  getAndAssertNodeAtPathExists, // Same, throws if not found
+  countNodes,                   // Count total nodes in the tree
+  getTreeDepth,                 // Get maximum depth
+  arePathsEqual,                // Compare two MosaicPath arrays
+  getPathToCorner,              // Get path to a corner tile
+  getOtherDirection,            // 'row' ↔ 'column'
+  getOtherBranch,               // 'first' ↔ 'second'
+
+  // Tree building
+  createBalancedTreeFromLeaves, // Build balanced tree from array of IDs
+
+  // Update generators (use with updateTree or mosaicActions.updateTree)
+  updateTree,                   // Apply an array of MosaicUpdate to a tree
+  createRemoveUpdate,           // Remove a tile
+  createExpandUpdate,           // Expand a tile to a percentage
+  createHideUpdate,             // Hide a tile (DnD internal)
+  createReplaceUpdate,          // Replace a tile with another node
+  createSplitUpdate,            // Split a tile into two
+  createDragToUpdates,          // Move a tile via drag
 } from '@heojeongbo/react-mosaic-ui';
+```
 
-function App() {
-  const [tree, setTree] = useState<MosaicNode<string> | null>(null);
+#### Common patterns
 
-  const createNode = () => `window-${Date.now()}`;
+```ts
+// Get all tile IDs currently in the layout
+const ids = getLeaves(tree); // ['editor', 'preview', 'terminal']
 
-  const autoArrange = () => {
-    if (!tree) return;
-    const leaves = getLeaves(tree);
-    const balanced = createBalancedTreeFromLeaves(leaves);
-    setTree(balanced);
-  };
+// Auto-arrange: rebuild a balanced layout from existing tiles
+const balanced = createBalancedTreeFromLeaves(getLeaves(tree));
+setTree(balanced);
+
+// Remove a specific tile programmatically
+const update = createRemoveUpdate(tree, pathToTile);
+setTree(updateTree(tree, [update]));
+```
+
+### Contexts
+
+For advanced use cases you can read the mosaic state directly from context:
+
+```tsx
+import { MosaicContext, MosaicWindowContext } from '@heojeongbo/react-mosaic-ui';
+import { useContext } from 'react';
+
+// Inside a tile rendered by renderTile:
+function MyTile() {
+  const { mosaicActions, mosaicId } = useContext(MosaicContext);
+  const { mosaicWindowActions } = useContext(MosaicWindowContext);
 
   return (
-    <Mosaic
-      renderTile={(id, path) => (
-        <MosaicWindow
-          path={path}
-          title={id}
-          createNode={createNode}
-          onDragStart={() => console.log('Drag started')}
-          onDragEnd={(type) => console.log('Drag ended:', type)}
-          additionalControls={
-            <div>
-              <button onClick={() => alert('Custom action')}>
-                Custom Action
-              </button>
-            </div>
-          }
-        >
-          <div>Window: {id}</div>
-        </MosaicWindow>
-      )}
-      value={tree}
-      onChange={setTree}
-    />
+    <button onClick={() => mosaicActions.remove(mosaicWindowActions.getPath())}>
+      Close me
+    </button>
   );
 }
 ```
 
-### Drag and Drop Events
+**`MosaicRootActions`** (via `MosaicContext.mosaicActions`):
 
-```typescript
-<MosaicWindow
-  path={path}
-  title="Window"
-  onDragStart={() => {
-    console.log('Window drag started');
-  }}
-  onDragEnd={(type) => {
-    // type: 'drop' | 'reset'
-    console.log('Window drag ended:', type);
-  }}
->
-  <div>Content</div>
-</MosaicWindow>
+| Method | Description |
+|--------|-------------|
+| `expand(path, percentage?)` | Expand node to percentage (default 70%) |
+| `remove(path)` | Remove node at path |
+| `hide(path)` | Hide node (used internally by DnD) |
+| `replaceWith(path, node)` | Replace node at path |
+| `updateTree(updates, suppressOnRelease?)` | Apply multiple updates atomically |
+| `getRoot()` | Get current root node |
+
+**`MosaicWindowActions`** (via `MosaicWindowContext.mosaicWindowActions`):
+
+| Method | Description |
+|--------|-------------|
+| `split()` | Split the current window |
+| `replaceWithNew()` | Replace current window with a new tile |
+| `getPath()` | Get current window's path in the tree |
+
+## Style Customization
+
+Import the stylesheet once at your app entry point:
+
+```ts
+import '@heojeongbo/react-mosaic-ui/styles.css';
 ```
 
-### Additional Controls (Drawer Menu)
-
-```typescript
-<MosaicWindow
-  path={path}
-  title="Window"
-  additionalControls={
-    <div>
-      <button onClick={() => console.log('Action 1')}>Action 1</button>
-      <button onClick={() => console.log('Action 2')}>Action 2</button>
-    </div>
-  }
->
-  <div>Content</div>
-</MosaicWindow>
-```
-
-## 🎨 Style Customization
-
-You can customize the theme using CSS variables:
+Override CSS variables to theme the layout:
 
 ```css
 :root {
@@ -216,163 +262,155 @@ You can customize the theme using CSS variables:
   --rm-toolbar-bg: #f1f5f9;
   --rm-split-color: #94a3b8;
   --rm-split-hover: #64748b;
-  --rm-split-size: 4px;
+  --rm-split-size: 4px;       /* Width/height of the resize handle */
   --rm-toolbar-height: 40px;
 }
 ```
 
-## 🔧 API
+All internal class names use the `rm-` prefix and are scoped under `.react-mosaic`, so they won't conflict with your own styles.
 
-### Mosaic Component
+### Custom toolbar
 
-```typescript
-interface MosaicProps<T> {
-  renderTile: (id: T, path: MosaicPath) => JSX.Element;
-  value?: MosaicNode<T> | null;
-  initialValue?: MosaicNode<T> | null;
-  onChange?: (node: MosaicNode<T> | null) => void;
-  onRelease?: (node: MosaicNode<T> | null) => void;
-  className?: string;
-  zeroStateView?: JSX.Element;
-  mosaicId?: string;
-  createNode?: () => T | Promise<T>;
+```tsx
+<MosaicWindow
+  title="My Window"
+  path={path}
+  renderToolbar={(props, defaultToolbar) => (
+    <div className="my-toolbar">
+      <span>{props.title}</span>
+      <div className="actions">{defaultToolbar}</div>
+    </div>
+  )}
+>
+  <div>Content</div>
+</MosaicWindow>
+```
+
+### Additional controls (drawer)
+
+```tsx
+<MosaicWindow
+  title="My Window"
+  path={path}
+  additionalControls={
+    <>
+      <button onClick={handleExport}>Export</button>
+      <button onClick={handleSettings}>Settings</button>
+    </>
+  }
+>
+  <div>Content</div>
+</MosaicWindow>
+```
+
+## Advanced Examples
+
+### Dynamic tile creation
+
+```tsx
+let nextId = 1;
+
+function App() {
+  const [tree, setTree] = useState<MosaicNode<number> | null>(1);
+
+  return (
+    <Mosaic<number>
+      value={tree}
+      onChange={setTree}
+      createNode={() => ++nextId}
+      renderTile={(id, path) => (
+        <MosaicWindow title={`Window ${id}`} path={path} createNode={() => ++nextId}>
+          <div>Content {id}</div>
+        </MosaicWindow>
+      )}
+    />
+  );
 }
 ```
 
-### MosaicWindow Component
+### Adding a new window to an existing layout
 
-```typescript
-interface MosaicWindowProps<T> {
-  title: string;
-  path: MosaicPath;
-  children: ReactNode;
-  createNode?: () => T | Promise<T>;
-  draggable?: boolean;
-  toolbarControls?: ReactNode;
-  additionalControls?: ReactNode;
-  renderToolbar?: (props: MosaicWindowToolbarProps<T>, defaultToolbar: ReactNode) => ReactNode;
-  onDragStart?: () => void;
-  onDragEnd?: (type: 'drop' | 'reset') => void;
-  className?: string;
+```ts
+import { createBalancedTreeFromLeaves, getLeaves } from '@heojeongbo/react-mosaic-ui';
+
+function addWindow(tree: MosaicNode<string> | null, newId: string) {
+  const current = getLeaves(tree ?? []);
+  return createBalancedTreeFromLeaves([...current, newId]);
 }
 ```
 
-### Utility Functions
+### Multiple independent mosaics on one page
 
-```typescript
-// Tree manipulation
-getLeaves(node: MosaicNode<T>): T[]
-getNodeAtPath(node: MosaicNode<T>, path: MosaicPath): MosaicNode<T> | null
-createBalancedTreeFromLeaves(leaves: T[]): MosaicNode<T> | null
-
-// Tree updates
-updateTree(root: MosaicNode<T>, updates: MosaicUpdate<T>[]): MosaicNode<T>
-createRemoveUpdate(root: MosaicNode<T>, path: MosaicPath): MosaicUpdate<T>
-createExpandUpdate(path: MosaicPath, percentage?: number): MosaicUpdate<T>
+```tsx
+<Mosaic mosaicId="mosaic-left"  value={leftTree}  onChange={setLeft}  renderTile={renderTile} />
+<Mosaic mosaicId="mosaic-right" value={rightTree} onChange={setRight} renderTile={renderTile} />
 ```
 
-## 🛠️ Tech Stack
+Tiles can only be dragged within the same `mosaicId`.
 
-- **React 18+**: UI library
-- **TypeScript 5**: Type safety
-- **Rollup**: Bundler
-- **Tailwind CSS v4**: Styling (prefix: `rm-`)
-- **React DnD**: Drag and drop
-- **Immer**: Immutable state updates
-- **Vitest**: Testing
-- **Bun**: Package manager
+### `onRelease` — respond after resize or drag completes
 
-## 📋 Features
-
-✅ **Modern React**: React 18+ support
-✅ **TypeScript**: Full type safety
-✅ **FSD Architecture**: Scalable structure
-✅ **Tailwind CSS v4**: Conflict-free styling (`rm-` prefix)
-✅ **Tree Structure**: Flexible layouts
-✅ **Drag and Drop**: Intuitive UI based on React DnD
-✅ **Built-in Controls**: Replace, Split, Expand, Remove buttons
-✅ **Additional Controls**: Drawer menu via additionalControls
-✅ **Drag Events**: onDragStart, onDragEnd hooks
-✅ **Customization**: Theme via CSS variables, full customization via renderToolbar
-✅ **Controlled/Uncontrolled**: Both modes supported
-
-## 🤝 Contributing
-
-This project strictly follows FSD architecture and clean code principles.
-Before contributing, please review the [Clean Code Guide](./docs/clean-code-guide.md) and [FSD Architecture](./docs/fsd-architecture.md).
-
-### Git Workflow
-
-This project uses Husky for git hooks and follows conventional commit standards.
-
-#### Commit Message Format
-
-All commits must follow the conventional commit format:
-
-```
-type(scope?): subject
-
-Examples:
-feat: add window resize feature
-fix(mosaic): resolve drag and drop issue
-docs: update README
+```tsx
+<Mosaic
+  value={tree}
+  onChange={setTree}
+  onRelease={(newTree) => {
+    // save layout to server/localStorage after user finishes dragging
+    saveLayout(newTree);
+  }}
+  renderTile={renderTile}
+/>
 ```
 
-**Allowed types:**
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, missing semicolons, etc.)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks
-- `perf`: Performance improvements
-- `ci`: CI/CD changes
-- `build`: Build system changes
-- `revert`: Revert previous commit
-
-#### Pre-commit Hooks
-
-Before each commit, the following checks run automatically:
-1. Linting (`bun run lint`)
-2. Type checking (`bun run typecheck`)
-3. Tests (`bun test`)
-
-If any check fails, the commit will be blocked.
-
-### Release Process
-
-This project uses [release-it](https://github.com/release-it/release-it) for automated releases.
-
-#### Creating a Release
+## Development
 
 ```bash
-# Patch release (1.0.0 → 1.0.1)
-bun run release:patch
+# Install dependencies
+bun install
 
-# Minor release (1.0.0 → 1.1.0)
-bun run release:minor
+# Build library
+bun run build
 
-# Major release (1.0.0 → 2.0.0)
-bun run release:major
+# Run tests (200 tests)
+bun run test
 
-# Interactive release (choose version)
-bun run release
+# Type check
+bun run typecheck
 
-# Dry run (test without publishing)
-bun run release:dry
+# Lint
+bun run lint
+
+# Run all checks
+bun run check
+
+# Run the example app
+cd example && bun install && bun run dev
 ```
 
-The release process will:
-1. Run all checks (lint, typecheck, tests)
-2. Build the project
-3. Update version in package.json
-4. Generate/update CHANGELOG.md
-5. Create a git tag
-6. Push to GitHub
-7. Create a GitHub release
-8. Publish to npm
+### Release
 
-## 📄 License
+```bash
+bun run release:patch   # 2.2.1 → 2.2.2
+bun run release:minor   # 2.2.1 → 2.3.0
+bun run release:major   # 2.2.1 → 3.0.0
+bun run release:dry     # dry run (no publish)
+```
+
+The release process runs lint + typecheck + tests, builds, bumps the version, generates CHANGELOG, tags the commit, pushes to GitHub, and publishes to npm.
+
+## Tech Stack
+
+| Tool | Purpose |
+|------|---------|
+| React 18 / 19 | UI |
+| TypeScript 5 | Type safety |
+| Rollup | Library bundler |
+| Tailwind CSS v4 | Styling (`rm-` prefix) |
+| React DnD | Drag and drop |
+| Immer | Immutable tree updates |
+| Vitest | Testing |
+| Bun | Package manager & scripts |
+
+## License
 
 MIT
