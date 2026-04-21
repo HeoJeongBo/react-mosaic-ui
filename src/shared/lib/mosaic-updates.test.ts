@@ -8,6 +8,7 @@ import {
   createRemoveUpdate,
   createReplaceUpdate,
   createSplitUpdate,
+  updateSplitPercentage,
   updateTree,
 } from './mosaic-updates';
 
@@ -570,5 +571,72 @@ describe('mosaic-updates', () => {
       };
       expect(() => createRemoveUpdate(root, [])).toThrow();
     });
+  });
+});
+
+describe('updateSplitPercentage', () => {
+  it('updates splitPercentage at root (empty path)', () => {
+    const root: MosaicNode<TestId> = {
+      direction: 'row',
+      first: 'a',
+      second: 'b',
+      splitPercentage: 50,
+    };
+    const result = updateSplitPercentage(root, [], 70);
+    expect(result).toEqual({ ...root, splitPercentage: 70 });
+  });
+
+  it('updates splitPercentage at nested path', () => {
+    const inner: MosaicNode<TestId> = {
+      direction: 'column',
+      first: 'b',
+      second: 'c',
+      splitPercentage: 50,
+    };
+    const root: MosaicNode<TestId> = {
+      direction: 'row',
+      first: 'a',
+      second: inner,
+      splitPercentage: 50,
+    };
+    const result = updateSplitPercentage(root, ['second'], 30);
+    expect(result).toEqual({ ...root, second: { ...inner, splitPercentage: 30 } });
+  });
+
+  it('preserves sibling subtree reference (no unnecessary clone)', () => {
+    const firstNode: MosaicNode<TestId> = 'a';
+    const inner: MosaicNode<TestId> = {
+      direction: 'column',
+      first: 'b',
+      second: 'c',
+      splitPercentage: 50,
+    };
+    const root: MosaicNode<TestId> = {
+      direction: 'row',
+      first: firstNode,
+      second: inner,
+      splitPercentage: 50,
+    };
+    const result = updateSplitPercentage(root, ['second'], 40);
+    // 'first' subtree is untouched — same reference
+    expect((result as typeof root).first).toBe(firstNode);
+  });
+
+  it('returns same reference when root is a leaf', () => {
+    const leaf: MosaicNode<TestId> = 'a';
+    const result = updateSplitPercentage(leaf, [], 60);
+    expect(result).toBe(leaf);
+  });
+
+  it('returns same root reference when path does not exist', () => {
+    const root: MosaicNode<TestId> = {
+      direction: 'row',
+      first: 'a',
+      second: 'b',
+      splitPercentage: 50,
+    };
+    // path leads into a leaf — nothing to update, root unchanged
+    const result = updateSplitPercentage(root, ['first'], 60);
+    expect(result).toBe(root);
   });
 });

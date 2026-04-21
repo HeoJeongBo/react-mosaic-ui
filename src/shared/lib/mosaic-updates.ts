@@ -1,5 +1,12 @@
 import { produce } from 'immer';
-import type { MosaicKey, MosaicNode, MosaicPath, MosaicUpdate, MosaicUpdateSpec } from '../types';
+import type {
+  MosaicBranch,
+  MosaicKey,
+  MosaicNode,
+  MosaicPath,
+  MosaicUpdate,
+  MosaicUpdateSpec,
+} from '../types';
 import { MosaicDropTargetPosition } from '../types';
 import {
   arePathsEqual,
@@ -316,4 +323,25 @@ export const createSplitUpdate = <T extends MosaicKey>(
       },
     },
   };
+};
+
+/**
+ * resize tick 전용: splitPercentage 하나만 교체하는 O(depth) shallow update.
+ * immer produce 없이 path 위의 노드만 새 spread 참조로 교체한다.
+ * 형제 subtree는 기존 참조를 그대로 유지 → MosaicNodeRenderer memo 통과.
+ */
+export const updateSplitPercentage = <T extends MosaicKey>(
+  root: MosaicNode<T>,
+  path: MosaicPath,
+  percentage: number,
+): MosaicNode<T> => {
+  if (!isParent(root)) return root;
+  if (path.length === 0) {
+    return { ...root, splitPercentage: percentage };
+  }
+  const [branch, ...rest] = path as [MosaicBranch, ...MosaicPath];
+  const child = root[branch] as MosaicNode<T>;
+  const updated = updateSplitPercentage(child, rest, percentage);
+  if (updated === child) return root;
+  return { ...root, [branch]: updated };
 };

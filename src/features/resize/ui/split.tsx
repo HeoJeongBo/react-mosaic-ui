@@ -44,12 +44,12 @@ export const Split = ({
   const scheduleChange = useCallback(
     (nextPercentage: number) => {
       latestPercentageRef.current = nextPercentage;
-      setLivePercentage(nextPercentage);
 
       if (rafIdRef.current !== null) return;
 
       rafIdRef.current = requestAnimationFrame(() => {
         rafIdRef.current = null;
+        setLivePercentage(latestPercentageRef.current);
         onChange(latestPercentageRef.current);
       });
     },

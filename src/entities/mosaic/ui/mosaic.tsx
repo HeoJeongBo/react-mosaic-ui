@@ -3,6 +3,7 @@ import {
   createHideUpdate,
   createRemoveUpdate,
   createReplaceUpdate,
+  updateSplitPercentage,
   updateTree,
 } from '@/shared/lib';
 import { MosaicContext } from '@/shared/lib/context';
@@ -148,7 +149,19 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
       updateTree: (updates: MosaicUpdate<T>[], suppressOnRelease = false) => {
         const root = currentValueRef.current;
         if (root === null) return;
-        const newTree = updateTree(root, updates);
+
+        // resize tick(suppressOnRelease=true)이고 splitPercentage 단일 업데이트면
+        // shallow 헬퍼로 처리 → immer 없이 형제 subtree 참조 유지
+        const u = updates[0];
+        const uSpec = u !== undefined && !('$set' in u.spec) ? u.spec : undefined;
+        const isSplitPercentageTick =
+          suppressOnRelease && updates.length === 1 && uSpec?.splitPercentage !== undefined;
+
+        const newTree =
+          isSplitPercentageTick && u !== undefined && uSpec?.splitPercentage !== undefined
+            ? updateSplitPercentage(root as MosaicNode<T>, u.path, uSpec.splitPercentage.$set)
+            : updateTree(root, updates);
+
         if (!controlledRef.current) {
           if (suppressOnRelease) {
             startTransition(() => setInternalValue(newTree));
