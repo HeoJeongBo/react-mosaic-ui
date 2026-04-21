@@ -19,7 +19,7 @@
     "publishArgs": ["--access", "public"]
   },
   "hooks": {
-    "before:init": ["bun run lint", "bun run typecheck", "bun test"],
+    "before:init": ["bun run lint", "bun run typecheck", "bun run test --run"],
     "after:bump": "bun run build"
   },
   "plugins": {
