@@ -105,3 +105,20 @@ export type TileRenderer<T extends MosaicKey = string> = (id: T, path: MosaicPat
  * Function to create new nodes
  */
 export type CreateNode<T extends MosaicKey = string> = () => T | Promise<T>;
+
+/**
+ * Drag bindings exposed via MosaicWindowToolbarProps.dragHandle.
+ * Attach dragHandle.ref to the element that should initiate dragging.
+ *
+ * The object identity is stable for the lifetime of the window, so it is safe
+ * to use as a dependency or spread into a memoized child.
+ *
+ * isDragging is intentionally omitted here — reading it in the parent would
+ * cause the entire MosaicWindow (including children) to re-render on every
+ * drag state change. If you need drag-state visual feedback, use
+ * react-dnd's useDragLayer inside your toolbar component instead.
+ */
+export interface DragBindings {
+  /** Attach to the draggable element (react-dnd drag source ref). */
+  ref: (el: HTMLElement | null) => void;
+}

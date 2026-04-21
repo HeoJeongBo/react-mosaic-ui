@@ -35,6 +35,7 @@ export type {
   MosaicUpdateSpec,
   TileRenderer,
   CreateNode,
+  DragBindings,
   MosaicRootActions,
   MosaicContextValue,
   MosaicWindowActions,

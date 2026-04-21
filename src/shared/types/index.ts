@@ -13,6 +13,7 @@ export type {
   MosaicDropData,
   TileRenderer,
   CreateNode,
+  DragBindings,
 } from './mosaic.types';
 
 export { MosaicDropTargetPosition, Corner } from './mosaic.types';

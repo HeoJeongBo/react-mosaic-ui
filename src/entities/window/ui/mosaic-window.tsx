@@ -1,10 +1,16 @@
 import { arePathsEqual, getNodeAtPath } from '@/shared/lib';
 import { MosaicContext, MosaicWindowContext } from '@/shared/lib/context';
-import type { CreateNode, MosaicDragItem, MosaicKey, MosaicPath } from '@/shared/types';
+import type {
+  CreateNode,
+  DragBindings,
+  MosaicDragItem,
+  MosaicKey,
+  MosaicPath,
+} from '@/shared/types';
 import type { MosaicWindowActions } from '@/shared/types';
 import classNames from 'classnames';
 import React, { type ReactNode, useContext, useMemo, useRef, useState } from 'react';
-import { useDrag } from 'react-dnd';
+import { useDrag, useDragLayer } from 'react-dnd';
 
 const DRAG_ITEM_TYPE = 'MosaicWindow';
 
@@ -27,6 +33,8 @@ export interface MosaicWindowToolbarProps<T extends MosaicKey> {
   createNode?: CreateNode<T>;
   toolbarControls?: ReactNode;
   additionalControls?: ReactNode;
+  /** Attach dragHandle.ref to the element that should initiate dragging. */
+  dragHandle: DragBindings;
 }
 
 const MosaicWindowImpl = <T extends MosaicKey>({
@@ -41,15 +49,41 @@ const MosaicWindowImpl = <T extends MosaicKey>({
   onDragEnd,
   className,
 }: MosaicWindowProps<T>) => {
-  const { mosaicActions } = useContext(MosaicContext);
+  const { mosaicActions, mosaicId } = useContext(MosaicContext);
 
-  // Store props in refs so windowActions (and therefore MosaicWindowContext)
-  // never need to be recreated. This prevents context-triggered re-renders
-  // of the toolbar, which would interrupt active drags.
+  // Store props in refs so windowActions / useDrag never need to be recreated.
   const pathRef = useRef(path);
   pathRef.current = path;
   const createNodeRef = useRef(createNode);
   createNodeRef.current = createNode;
+  const onDragStartRef = useRef(onDragStart);
+  onDragStartRef.current = onDragStart;
+  const onDragEndRef = useRef(onDragEnd);
+  onDragEndRef.current = onDragEnd;
+
+  // useDrag lives here so dragHandle.ref can be passed into renderToolbar.
+  // No collect fn → isDragging state stays inside the toolbar, not here.
+  // This means MosaicWindowImpl (and its children) never re-render on drag.
+  const [, drag] = useDrag<MosaicDragItem, void, void>(
+    () => ({
+      type: DRAG_ITEM_TYPE,
+      item: () => {
+        if (onDragStartRef.current) setTimeout(onDragStartRef.current, 0);
+        return { path: pathRef.current, mosaicId };
+      },
+      end: (_item, monitor) => {
+        if (monitor.didDrop()) {
+          onDragEndRef.current?.('drop');
+        } else {
+          onDragEndRef.current?.('reset');
+        }
+      },
+    }),
+    [mosaicId],
+  );
+
+  // dragHandle is stable for the lifetime of the window (drag ref never changes).
+  const dragHandle: DragBindings = useMemo(() => ({ ref: drag }), [drag]);
 
   const windowActions: MosaicWindowActions = useMemo(
     () => ({
@@ -94,18 +128,13 @@ const MosaicWindowImpl = <T extends MosaicKey>({
   const toolbarProps: MosaicWindowToolbarProps<T> = {
     title,
     path,
+    dragHandle,
     ...(createNode !== undefined && { createNode }),
     ...(toolbarControls !== undefined && { toolbarControls }),
     ...(additionalControls !== undefined && { additionalControls }),
   };
 
-  const defaultToolbar = (
-    <MosaicWindowToolbar
-      {...toolbarProps}
-      {...(onDragStart !== undefined && { onDragStart })}
-      {...(onDragEnd !== undefined && { onDragEnd })}
-    />
-  );
+  const defaultToolbar = <MosaicWindowToolbar {...toolbarProps} />;
 
   const toolbar = renderToolbar ? renderToolbar(toolbarProps, defaultToolbar) : defaultToolbar;
 
@@ -126,11 +155,9 @@ const MosaicWindowImpl = <T extends MosaicKey>({
 };
 
 export const MosaicWindow = React.memo(MosaicWindowImpl, (prev, next) => {
-  // Compare path using custom comparator
   if (!arePathsEqual(prev.path, next.path)) return false;
 
-  // Skip callback props — they are forwarded to the toolbar which stores them
-  // in refs, so new function references don't need to trigger a re-render.
+  // Skip callback props — stored in refs, new references don't need re-renders.
   const skipKeys = new Set(['path', 'onDragStart', 'onDragEnd']);
   const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
   for (const key of keys) {
@@ -149,43 +176,17 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
   createNode,
   toolbarControls,
   additionalControls,
-  onDragStart,
-  onDragEnd,
-}: MosaicWindowToolbarProps<T> & {
-  onDragStart?: () => void;
-  onDragEnd?: (type: 'drop' | 'reset') => void;
-}) => {
-  const { mosaicActions, mosaicId } = useContext(MosaicContext);
+  dragHandle,
+}: MosaicWindowToolbarProps<T>) => {
+  const { mosaicActions } = useContext(MosaicContext);
   const { mosaicWindowActions } = useContext(MosaicWindowContext);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // Store all callback/array props in refs so useDrag deps stay minimal.
-  // path is an array → new reference on every render even with identical values,
-  // which would cause useDrag to re-register the drag source and kill active drags.
-  const pathRef = useRef(path);
-  pathRef.current = path;
-  const onDragStartRef = useRef(onDragStart);
-  onDragStartRef.current = onDragStart;
-  const onDragEndRef = useRef(onDragEnd);
-  onDragEndRef.current = onDragEnd;
-
-  const [, drag] = useDrag<MosaicDragItem, void, void>(
-    () => ({
-      type: DRAG_ITEM_TYPE,
-      item: () => {
-        if (onDragStartRef.current) setTimeout(onDragStartRef.current, 0);
-        return { path: pathRef.current, mosaicId };
-      },
-      end: (_item, monitor) => {
-        if (monitor.didDrop()) {
-          onDragEndRef.current?.('drop');
-        } else {
-          onDragEndRef.current?.('reset');
-        }
-      },
-    }),
-    [mosaicId],
-  );
+  // isDragging is subscribed here (toolbar scope only) so the window body
+  // and children are never re-rendered when drag state changes.
+  const { isDragging } = useDragLayer((monitor) => ({
+    isDragging: monitor.isDragging(),
+  }));
 
   const handleExpand = () => {
     mosaicActions.expand(path);
@@ -218,7 +219,10 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
   return (
     <>
       <div className="rm-mosaic-window-toolbar rm-flex rm-items-center rm-justify-between rm-px-4 rm-py-2 rm-bg-mosaic-toolbar rm-border-b rm-border-mosaic-border rm-select-none">
-        <div ref={drag} className="rm-mosaic-window-title rm-font-medium rm-text-sm rm-cursor-move">
+        <div
+          ref={dragHandle.ref}
+          className={`rm-mosaic-window-title rm-font-medium rm-text-sm rm-cursor-move${isDragging ? ' rm-opacity-50' : ''}`}
+        >
           {title}
         </div>
         <div className="rm-mosaic-window-controls rm-flex rm-gap-1 rm-items-center">
@@ -281,12 +285,11 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
 };
 
 const MosaicWindowToolbar = React.memo(MosaicWindowToolbarImpl, (prev, next) => {
-  // Compare path using custom comparator
   if (!arePathsEqual(prev.path, next.path)) return false;
 
-  // Skip callback props — they are stored in refs inside the component,
-  // so re-renders are not needed to pick up new references.
-  const skipKeys = new Set(['path', 'onDragStart', 'onDragEnd']);
+  // dragHandle.ref is stable (useDrag ref doesn't change), but isDragging can change.
+  // We include dragHandle in comparison so toolbar re-renders when isDragging flips.
+  const skipKeys = new Set(['path']);
   const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
   for (const key of keys) {
     if (skipKeys.has(key)) continue;

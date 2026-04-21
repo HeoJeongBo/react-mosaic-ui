@@ -7,12 +7,15 @@ import { MosaicWindow } from './mosaic-window';
 
 afterEach(() => cleanup());
 
+const mockUseDragLayer = vi.fn(() => ({ isDragging: false }));
+
 vi.mock('react-dnd', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-dnd')>();
   return {
     ...actual,
-    useDrag: vi.fn(() => [{ isDragging: false }, vi.fn(), vi.fn()]),
+    useDrag: vi.fn(() => [{}, vi.fn(), vi.fn()]),
     useDrop: vi.fn(() => [{ isOver: false }, vi.fn()]),
+    useDragLayer: () => mockUseDragLayer(),
   };
 });
 
@@ -295,6 +298,45 @@ describe('MosaicWindow', () => {
 
       // Close button still renders after path update (no crash)
       expect(screen.getByTitle('Close')).toBeInTheDocument();
+    });
+  });
+
+  describe('drag isolation', () => {
+    it('does not re-render children when isDragging changes', () => {
+      let childRenderCount = 0;
+      const Child = () => {
+        childRenderCount++;
+        return <div data-testid="child">child</div>;
+      };
+      const stableChild = <Child />;
+
+      const { rerender } = render(
+        <MosaicContext.Provider
+          value={{ mosaicActions: mockMosaicActions, mosaicId: 'test', renderTile: () => <></> }}
+        >
+          <MosaicWindow title="Test" path={['first']}>
+            {stableChild}
+          </MosaicWindow>
+        </MosaicContext.Provider>,
+      );
+
+      const before = childRenderCount;
+
+      // Simulate drag start: useDragLayer returns isDragging: true
+      mockUseDragLayer.mockReturnValue({ isDragging: true });
+
+      rerender(
+        <MosaicContext.Provider
+          value={{ mosaicActions: mockMosaicActions, mosaicId: 'test', renderTile: () => <></> }}
+        >
+          <MosaicWindow title="Test" path={['first']}>
+            {stableChild}
+          </MosaicWindow>
+        </MosaicContext.Provider>,
+      );
+
+      // Children must not have re-rendered — isDragging is isolated to the toolbar
+      expect(childRenderCount).toBe(before);
     });
   });
 
