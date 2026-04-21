@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.3](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.2.2...v2.2.3) (2026-04-21)
+
+### Bug Fixes
+
+* resize performace issue ([fc5f2ee](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/fc5f2ee936b40486bd4f2a1701f485c8eb930560))
+* window drag bug ([7b15afa](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/7b15afa9b5d9ae8322501b1067d45ad5a46bd80e))
+
 ## [2.2.2](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.2.1...v2.2.2) (2026-04-21)
 
 ### Features
