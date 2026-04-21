@@ -1,4 +1,4 @@
-import type { MosaicKey, MosaicNode, MosaicPath, MosaicUpdate } from './mosaic.types';
+import type { MosaicKey, MosaicNode, MosaicPath, MosaicUpdate, TileRenderer } from './mosaic.types';
 
 /**
  * Root-level actions available through MosaicContext
@@ -41,6 +41,7 @@ export interface MosaicRootActions<T extends MosaicKey = string> {
 export interface MosaicContextValue<T extends MosaicKey = string> {
   mosaicActions: MosaicRootActions<T>;
   mosaicId: string;
+  renderTile: TileRenderer<T>;
 }
 
 /**

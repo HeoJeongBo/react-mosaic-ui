@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { containsPoint, createBoundingBox, getHeight, getWidth, split } from './bounding-box';
+import {
+  areBoundingBoxesEqual,
+  containsPoint,
+  createBoundingBox,
+  getHeight,
+  getWidth,
+  split,
+} from './bounding-box';
 
 describe('bounding-box', () => {
   describe('createBoundingBox', () => {
@@ -116,6 +123,43 @@ describe('bounding-box', () => {
       expect(left.bottom).toBe(box.bottom);
       expect(right.top).toBe(box.top);
       expect(right.bottom).toBe(box.bottom);
+    });
+  });
+
+  describe('areBoundingBoxesEqual', () => {
+    it('should return true for identical boxes', () => {
+      const a = createBoundingBox(0, 100, 100, 0);
+      const b = createBoundingBox(0, 100, 100, 0);
+      expect(areBoundingBoxesEqual(a, b)).toBe(true);
+    });
+
+    it('should return true for same reference', () => {
+      const a = createBoundingBox(10, 90, 80, 20);
+      expect(areBoundingBoxesEqual(a, a)).toBe(true);
+    });
+
+    it('should return false when top differs', () => {
+      expect(
+        areBoundingBoxesEqual(createBoundingBox(0, 100, 100, 0), createBoundingBox(1, 100, 100, 0)),
+      ).toBe(false);
+    });
+
+    it('should return false when right differs', () => {
+      expect(
+        areBoundingBoxesEqual(createBoundingBox(0, 100, 100, 0), createBoundingBox(0, 99, 100, 0)),
+      ).toBe(false);
+    });
+
+    it('should return false when bottom differs', () => {
+      expect(
+        areBoundingBoxesEqual(createBoundingBox(0, 100, 100, 0), createBoundingBox(0, 100, 99, 0)),
+      ).toBe(false);
+    });
+
+    it('should return false when left differs', () => {
+      expect(
+        areBoundingBoxesEqual(createBoundingBox(0, 100, 100, 0), createBoundingBox(0, 100, 100, 1)),
+      ).toBe(false);
     });
   });
 });

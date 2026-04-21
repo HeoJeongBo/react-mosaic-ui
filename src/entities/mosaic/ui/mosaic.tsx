@@ -19,7 +19,7 @@ import type {
 import classNames from 'classnames';
 import { createDragDropManager } from 'dnd-core';
 import type { DragDropManager } from 'dnd-core';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { DndContext } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { TouchBackend } from 'react-dnd-touch-backend';
@@ -149,7 +149,13 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
         const root = currentValueRef.current;
         if (root === null) return;
         const newTree = updateTree(root, updates);
-        if (!controlledRef.current) setInternalValue(newTree);
+        if (!controlledRef.current) {
+          if (suppressOnRelease) {
+            startTransition(() => setInternalValue(newTree));
+          } else {
+            setInternalValue(newTree);
+          }
+        }
         onChangeRef.current?.(newTree);
         if (!suppressOnRelease) {
           onReleaseRef.current?.(newTree);
@@ -166,8 +172,9 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
     () => ({
       mosaicActions,
       mosaicId,
+      renderTile,
     }),
-    [mosaicActions, mosaicId],
+    [mosaicActions, mosaicId, renderTile],
   );
 
   // Create a stable DnD manager that survives React 18 StrictMode double-mount.
@@ -217,7 +224,6 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
           ) : (
             <MosaicRoot
               root={currentValue}
-              renderTile={renderTile}
               {...(resize !== undefined && { resize })}
               className="rm-w-full rm-h-full"
             />

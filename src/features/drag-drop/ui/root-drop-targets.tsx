@@ -1,6 +1,6 @@
 import { MosaicContext } from '@/shared/lib/context';
 import { MosaicDropTargetPosition } from '@/shared/types';
-import { useContext } from 'react';
+import React, { useContext } from 'react';
 import { MosaicDropTarget } from './mosaic-drop-target';
 
 /**
@@ -10,7 +10,7 @@ import { MosaicDropTarget } from './mosaic-drop-target';
  *
  * Inspired by react-mosaic's RootDropTargets component.
  */
-export const RootDropTargets = () => {
+const RootDropTargetsImpl = () => {
   const { mosaicId } = useContext(MosaicContext);
 
   return (
@@ -60,3 +60,5 @@ export const RootDropTargets = () => {
     </>
   );
 };
+
+export const RootDropTargets = React.memo(RootDropTargetsImpl);

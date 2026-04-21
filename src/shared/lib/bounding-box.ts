@@ -40,3 +40,7 @@ export const split = (
 export const containsPoint = (box: BoundingBox, x: number, y: number): boolean => {
   return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
 };
+
+export const areBoundingBoxesEqual = (a: BoundingBox, b: BoundingBox): boolean => {
+  return a.top === b.top && a.right === b.right && a.bottom === b.bottom && a.left === b.left;
+};

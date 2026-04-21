@@ -12,6 +12,7 @@ export const MosaicContext = createContext<MosaicContextValue<any>>({
     getRoot: () => null,
   },
   mosaicId: 'default',
+  renderTile: () => null as unknown as JSX.Element,
 });
 
 export const MosaicWindowContext = createContext<MosaicWindowContextValue>({

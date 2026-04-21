@@ -29,6 +29,9 @@ export const Split = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const latestPercentageRef = useRef(percentage);
   const rafIdRef = useRef<number | null>(null);
+  // Stable ref so handleMouseDown/handleTouchStart don't need `percentage` in deps.
+  const percentageRef = useRef(percentage);
+  percentageRef.current = percentage;
 
   const flushPendingChange = useCallback(() => {
     if (rafIdRef.current !== null) {
@@ -79,7 +82,7 @@ export const Split = ({
       setIsDragging(true);
       const startX = e.clientX;
       const startY = e.clientY;
-      const startPercentage = percentage;
+      const startPercentage = percentageRef.current;
       const parentRect = parent.getBoundingClientRect();
       const parentWidth = boundingBox.right - boundingBox.left;
       const parentHeight = boundingBox.bottom - boundingBox.top;
@@ -126,7 +129,6 @@ export const Split = ({
     },
     [
       direction,
-      percentage,
       onRelease,
       minimumPaneSizePercentage,
       boundingBox,
@@ -147,7 +149,7 @@ export const Split = ({
       setIsDragging(true);
       const startX = touch.clientX;
       const startY = touch.clientY;
-      const startPercentage = percentage;
+      const startPercentage = percentageRef.current;
       const parentRect = parent.getBoundingClientRect();
       const parentWidth = boundingBox.right - boundingBox.left;
       const parentHeight = boundingBox.bottom - boundingBox.top;
@@ -197,7 +199,6 @@ export const Split = ({
     },
     [
       direction,
-      percentage,
       onRelease,
       minimumPaneSizePercentage,
       boundingBox,

@@ -28,4 +28,5 @@ export {
   getHeight,
   split,
   containsPoint,
+  areBoundingBoxesEqual,
 } from './bounding-box';

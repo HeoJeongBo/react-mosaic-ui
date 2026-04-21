@@ -19,13 +19,12 @@
     "composite": true,
 
     // Module Resolution
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/shared/*": ["src/shared/*"],
-      "@/entities/*": ["src/entities/*"],
-      "@/features/*": ["src/features/*"],
-      "@/widgets/*": ["src/widgets/*"]
+      "@/*": ["./src/*"],
+      "@/shared/*": ["./src/shared/*"],
+      "@/entities/*": ["./src/entities/*"],
+      "@/features/*": ["./src/features/*"],
+      "@/widgets/*": ["./src/widgets/*"]
     },
 
     // Emit
