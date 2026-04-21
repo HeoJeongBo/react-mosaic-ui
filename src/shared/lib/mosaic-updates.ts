@@ -258,15 +258,20 @@ export const createDragToUpdates = <T extends MosaicKey>(
     // New destination path is the parent path
     adjustedDestinationPath = sourceParentPath;
   } else {
-    // Check if source parent path is a prefix of destination path
+    // Check if source's parent is an ancestor of the destination path.
+    // When sourceParentPath is [] (source is a root-level child), the condition
+    // sourceParentPath.every(...) trivially returns true, so we need the length
+    // check only to confirm the dest is actually deeper. We intentionally allow
+    // sourceParentPath.length === 0 here — root collapses to its sibling after removal.
     const isSourceParentInDestPath =
-      sourceParentPath.length > 0 &&
       sourceParentPath.length < destinationPath.length &&
       sourceParentPath.every((branch, index) => destinationPath[index] === branch);
 
     if (isSourceParentInDestPath) {
-      // Source parent is an ancestor of destination
-      // After removing source, the tree structure changes
+      // Source parent is an ancestor of (or is the root of) destination.
+      // After removing source, the parent node collapses: source's sibling takes
+      // the parent's place. The destination path loses the segment that pointed
+      // into source's sibling branch.
       const sourceBranch = sourcePath[sourceParentPath.length];
       const destBranchAtSameLevel = destinationPath[sourceParentPath.length];
 

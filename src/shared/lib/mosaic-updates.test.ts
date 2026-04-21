@@ -79,11 +79,18 @@ describe('mosaic-updates', () => {
 
       const result = updateTree(root, updates);
 
-      // When 'a' is dragged to the left of 'b', 'a' is removed from root.first
-      // and since root.first only contained 'a', it collapses to just the second branch
+      // After removing 'a', root collapses to its second branch {first:'b', second:'c'}.
+      // The dest path ['second','first'] shifts up to ['first'] in the new root.
+      // 'a' is placed to the left of 'b', so the final tree is:
+      // { column, first: { row, first:'a', second:'b' }, second:'c' }
       expect(result).toEqual({
         direction: 'column',
-        first: 'b',
+        first: {
+          direction: 'row',
+          first: 'a',
+          second: 'b',
+          splitPercentage: 50,
+        },
         second: 'c',
         splitPercentage: 50,
       });
@@ -267,6 +274,92 @@ describe('mosaic-updates', () => {
           splitPercentage: 50,
         },
         second: 'c',
+        splitPercentage: 50,
+      });
+    });
+
+    it('should not lose the dragged window when root-level source moves into nested sibling subtree', () => {
+      // Bug: when source is at root level (['first'] or ['second']), removing it causes the
+      // tree to collapse (path:[], spec:{$set: sibling}). The destination path was not adjusted
+      // for this collapse, so the second update was applied to a non-existent path and silently
+      // ignored, causing the dragged window to disappear entirely.
+
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: 'a',
+        second: {
+          direction: 'column',
+          first: 'b',
+          second: 'c',
+          splitPercentage: 50,
+        },
+        splitPercentage: 50,
+      };
+
+      // Drag 'a' into nested 'b' (inside a's sibling subtree)
+      const updates = createDragToUpdates(
+        root,
+        ['first'],
+        ['second', 'first'],
+        MosaicDropTargetPosition.RIGHT,
+      );
+      const result = updateTree(root, updates);
+
+      const str = JSON.stringify(result);
+      expect(str).toContain('"a"');
+      expect(str).toContain('"b"');
+      expect(str).toContain('"c"');
+
+      // 'a' should appear next to 'b'
+      expect(result).toEqual({
+        direction: 'column',
+        first: {
+          direction: 'row',
+          first: 'b',
+          second: 'a',
+          splitPercentage: 50,
+        },
+        second: 'c',
+        splitPercentage: 50,
+      });
+    });
+
+    it('should not lose the dragged window when root-level second-branch moves into nested first-branch subtree', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: {
+          direction: 'column',
+          first: 'a',
+          second: 'b',
+          splitPercentage: 50,
+        },
+        second: 'c',
+        splitPercentage: 50,
+      };
+
+      // Drag 'c' into nested 'a' (inside c's sibling subtree)
+      const updates = createDragToUpdates(
+        root,
+        ['second'],
+        ['first', 'first'],
+        MosaicDropTargetPosition.BOTTOM,
+      );
+      const result = updateTree(root, updates);
+
+      const str = JSON.stringify(result);
+      expect(str).toContain('"a"');
+      expect(str).toContain('"b"');
+      expect(str).toContain('"c"');
+
+      expect(result).toEqual({
+        direction: 'column',
+        first: {
+          direction: 'column',
+          first: 'a',
+          second: 'c',
+          splitPercentage: 50,
+        },
+        second: 'b',
         splitPercentage: 50,
       });
     });

@@ -15,10 +15,12 @@ export interface MosaicRootProps<T extends MosaicKey> {
   resize?: ResizeOptions;
 }
 
+const DEFAULT_RESIZE_OPTIONS: ResizeOptions = { minimumPaneSizePercentage: 20 };
+
 export const MosaicRoot = <T extends MosaicKey>({
   root,
   className,
-  resize = { minimumPaneSizePercentage: 20 },
+  resize = DEFAULT_RESIZE_OPTIONS,
 }: MosaicRootProps<T>) => {
   const { mosaicId } = useContext(MosaicContext);
   const boundingBox = useMemo(() => createBoundingBox(0, 100, 100, 0), []);
@@ -95,6 +97,10 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
     [mosaicActions, path],
   );
 
+  // Hooks must run unconditionally before any early return.
+  const firstPath = useMemo(() => [...path, 'first'] as MosaicPath, [path]);
+  const secondPath = useMemo(() => [...path, 'second'] as MosaicPath, [path]);
+
   if (!isParent(node)) {
     return (
       <div
@@ -134,7 +140,7 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
     <>
       <MosaicNodeRenderer
         node={node.first}
-        path={[...path, 'first']}
+        path={firstPath}
         boundingBox={firstBox}
         resize={resize}
         mosaicId={mosaicId}
@@ -151,7 +157,7 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
       />
       <MosaicNodeRenderer
         node={node.second}
-        path={[...path, 'second']}
+        path={secondPath}
         boundingBox={secondBox}
         resize={resize}
         mosaicId={mosaicId}
@@ -166,6 +172,6 @@ const MosaicNodeRenderer = React.memo(
     prev.node === next.node &&
     areBoundingBoxesEqual(prev.boundingBox, next.boundingBox) &&
     arePathsEqual(prev.path, next.path) &&
-    prev.resize === next.resize &&
+    prev.resize?.minimumPaneSizePercentage === next.resize?.minimumPaneSizePercentage &&
     prev.mosaicId === next.mosaicId,
 ) as typeof MosaicNodeRendererImpl;

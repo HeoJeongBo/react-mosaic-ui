@@ -86,13 +86,22 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
 
   const currentValue = controlled ? props.value : internalValue;
 
-  // Store callbacks in refs so mosaicActions never needs to be recreated.
+  // Store callbacks in refs so mosaicActions/contextValue never need to be recreated.
   // This keeps MosaicContext stable and prevents context-triggered re-renders
   // in all consumers (MosaicWindow, MosaicWindowToolbar, MosaicDropTarget).
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const onReleaseRef = useRef(onRelease);
   onReleaseRef.current = onRelease;
+  const renderTileRef = useRef(renderTile);
+  renderTileRef.current = renderTile;
+
+  // Stable wrapper that never changes identity — reads latest renderTile from ref.
+  const stableRenderTile = useMemo<TileRenderer<T>>(
+    () => (node, path) => renderTileRef.current(node, path),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const currentValueRef = useRef(currentValue);
   currentValueRef.current = currentValue;
@@ -185,9 +194,9 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
     () => ({
       mosaicActions,
       mosaicId,
-      renderTile,
+      renderTile: stableRenderTile,
     }),
-    [mosaicActions, mosaicId, renderTile],
+    [mosaicActions, mosaicId, stableRenderTile],
   );
 
   // Create a stable DnD manager that survives React 18 StrictMode double-mount.

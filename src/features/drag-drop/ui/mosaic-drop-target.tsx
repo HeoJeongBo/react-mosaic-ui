@@ -2,7 +2,7 @@ import { createDragToUpdates } from '@/shared/lib';
 import { MosaicContext } from '@/shared/lib/context';
 import type { MosaicDragItem, MosaicPath } from '@/shared/types';
 import { MosaicDropTargetPosition } from '@/shared/types';
-import React, { useContext, useRef } from 'react';
+import React, { useContext, useMemo, useRef } from 'react';
 import { useDrop } from 'react-dnd';
 
 export interface MosaicDropTargetProps {
@@ -50,20 +50,25 @@ const MosaicDropTargetImpl = ({
     [mosaicId, position],
   );
 
+  const style = useMemo<React.CSSProperties>(
+    () => ({
+      ...getDropTargetStyle(position, isOver, hitArea),
+      opacity: isOver ? 1 : 0,
+      backgroundColor: 'rgba(59, 130, 246, 0.2)',
+      border: '2px solid rgba(59, 130, 246, 0.6)',
+      borderRadius: '4px',
+      transition: 'opacity 100ms ease-out',
+    }),
+    [position, isOver, hitArea],
+  );
+
   return (
     <div
       ref={drop}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => e.preventDefault()}
       className="rm-mosaic-drop-target rm-absolute"
-      style={{
-        ...getDropTargetStyle(position, isOver, hitArea),
-        opacity: isOver ? 1 : 0,
-        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-        border: '2px solid rgba(59, 130, 246, 0.6)',
-        borderRadius: '4px',
-        transition: 'opacity 100ms ease-out',
-      }}
+      style={style}
     />
   );
 };
