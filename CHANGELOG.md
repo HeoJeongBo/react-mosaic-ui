@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.4](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.2.3...v2.2.4) (2026-04-21)
+
+### Features
+
+* toolbar drag ([a8e5df8](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/a8e5df8f6edc3d65b36beab8303eb4b8e072fe42))
+
 ## [2.2.3](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.2.2...v2.2.3) (2026-04-21)
 
 ### Bug Fixes
