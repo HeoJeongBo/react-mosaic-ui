@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.1](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.2.0...v2.2.1) (2026-04-21)
+
+### Features
+
+* add npmrc ([019e49a](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/019e49a39799d663b94b27d9cf5c61f76eeda998))
+* improve test coverage ([7af6f1c](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/7af6f1c33058bc580f6f39a8c4016cfa61e24a2f))
+
+### Bug Fixes
+
+* test script ([fb8c0a3](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/fb8c0a30534848f55385d5a12e8f1e2437a541b1))
+
 ## [2.2.0](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.1.2...v2.2.0) (2026-03-01)
 
 ### Features
