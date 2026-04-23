@@ -147,6 +147,21 @@ export const createHideUpdate = <T extends MosaicKey>(path: MosaicPath): MosaicU
 };
 
 /**
+ * Lightweight canDrop check used during drag hover (called 30-60×/s).
+ * Avoids building the full update array — only verifies source/dest nodes exist
+ * and the paths are distinct.
+ */
+export const canDropOnTarget = <T extends MosaicKey>(
+  root: MosaicNode<T>,
+  sourcePath: MosaicPath,
+  destinationPath: MosaicPath,
+): boolean => {
+  if (sourcePath.length === 0) return false;
+  if (arePathsEqual(sourcePath, destinationPath)) return false;
+  return getNodeAtPath(root, sourcePath) !== null && getNodeAtPath(root, destinationPath) !== null;
+};
+
+/**
  * Create updates for drag and drop operation
  */
 export const createDragToUpdates = <T extends MosaicKey>(

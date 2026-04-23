@@ -7,7 +7,7 @@ import { arePathsEqual } from '@/shared/lib/mosaic-utilities';
 import type { MosaicKey, MosaicNode, MosaicPath } from '@/shared/types';
 import type { BoundingBox, ResizeOptions } from '@/shared/types';
 import { MosaicDropTargetPosition } from '@/shared/types';
-import React, { useCallback, useContext, useMemo } from 'react';
+import React, { useCallback, useContext, useMemo, useRef } from 'react';
 
 export interface MosaicRootProps<T extends MosaicKey> {
   root: MosaicNode<T> | null;
@@ -60,6 +60,15 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
 }: MosaicNodeRendererProps<T>) => {
   const { mosaicActions, renderTile } = useContext(MosaicContext);
 
+  // path is a new array reference on every render even when content is identical.
+  // Store in a ref so callbacks/memos read the latest value without being in deps.
+  const pathRef = useRef(path);
+  pathRef.current = path;
+
+  // Stable string derived from path content — used as a dep so memos/callbacks only
+  // invalidate when the actual path changes (e.g. node moves in the tree).
+  const pathKey = path.join('/');
+
   const handleSplitChange = useCallback(
     (newPercentage: number) => {
       const root = mosaicActions.getRoot();
@@ -68,7 +77,7 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
       mosaicActions.updateTree(
         [
           {
-            path,
+            path: pathRef.current,
             spec: {
               splitPercentage: { $set: newPercentage },
             },
@@ -77,7 +86,10 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
         true,
       );
     },
-    [mosaicActions, path],
+    // pathRef.current always holds the latest path; pathKey triggers re-creation
+    // only when path content changes, avoiding re-creation on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mosaicActions, pathKey],
   );
 
   const handleSplitRelease = useCallback(
@@ -87,19 +99,22 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
 
       mosaicActions.updateTree([
         {
-          path,
+          path: pathRef.current,
           spec: {
             splitPercentage: { $set: newPercentage },
           },
         },
       ]);
     },
-    [mosaicActions, path],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mosaicActions, pathKey],
   );
 
   // Hooks must run unconditionally before any early return.
-  const firstPath = useMemo(() => [...path, 'first'] as MosaicPath, [path]);
-  const secondPath = useMemo(() => [...path, 'second'] as MosaicPath, [path]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const firstPath = useMemo(() => [...pathRef.current, 'first'] as MosaicPath, [pathKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const secondPath = useMemo(() => [...pathRef.current, 'second'] as MosaicPath, [pathKey]);
 
   if (!isParent(node)) {
     return (

@@ -32,6 +32,9 @@ export const Split = ({
   // Stable ref so handleMouseDown/handleTouchStart don't need `percentage` in deps.
   const percentageRef = useRef(percentage);
   percentageRef.current = percentage;
+  // Stable ref so handlers don't need `boundingBox` (new object each render) in deps.
+  const boundingBoxRef = useRef(boundingBox);
+  boundingBoxRef.current = boundingBox;
 
   const flushPendingChange = useCallback(() => {
     if (rafIdRef.current !== null) {
@@ -84,8 +87,8 @@ export const Split = ({
       const startY = e.clientY;
       const startPercentage = percentageRef.current;
       const parentRect = parent.getBoundingClientRect();
-      const parentWidth = boundingBox.right - boundingBox.left;
-      const parentHeight = boundingBox.bottom - boundingBox.top;
+      const parentWidth = boundingBoxRef.current.right - boundingBoxRef.current.left;
+      const parentHeight = boundingBoxRef.current.bottom - boundingBoxRef.current.top;
 
       // Track the latest percentage during drag
       let latestPercentage = startPercentage;
@@ -131,7 +134,6 @@ export const Split = ({
       direction,
       onRelease,
       minimumPaneSizePercentage,
-      boundingBox,
       flushPendingChange,
       scheduleChange,
     ],
@@ -151,8 +153,8 @@ export const Split = ({
       const startY = touch.clientY;
       const startPercentage = percentageRef.current;
       const parentRect = parent.getBoundingClientRect();
-      const parentWidth = boundingBox.right - boundingBox.left;
-      const parentHeight = boundingBox.bottom - boundingBox.top;
+      const parentWidth = boundingBoxRef.current.right - boundingBoxRef.current.left;
+      const parentHeight = boundingBoxRef.current.bottom - boundingBoxRef.current.top;
 
       // Track the latest percentage during drag
       let latestPercentage = startPercentage;
@@ -201,7 +203,6 @@ export const Split = ({
       direction,
       onRelease,
       minimumPaneSizePercentage,
-      boundingBox,
       flushPendingChange,
       scheduleChange,
     ],

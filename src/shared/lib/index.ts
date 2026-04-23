@@ -19,6 +19,7 @@ export {
   createExpandUpdate,
   createHideUpdate,
   createDragToUpdates,
+  canDropOnTarget,
   createReplaceUpdate,
   createSplitUpdate,
 } from './mosaic-updates';

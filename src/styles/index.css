@@ -226,6 +226,18 @@
   background: var(--color-mosaic-split-hover);
 }
 
+/* During active resize: suppress transition and promote to GPU layer. */
+.rm-mosaic-split.rm-bg-mosaic-split-hover {
+  transition: none;
+  will-change: left, top;
+}
+
+/* Dim all window titles while any window is being dragged.
+   .rm-dragging is toggled imperatively on the container — no React re-render needed. */
+.rm-dragging .rm-mosaic-window-title {
+  opacity: 0.5;
+}
+
 .rm-cursor-col-resize {
   cursor: col-resize;
 }
@@ -235,10 +247,43 @@
 }
 
 /* Drop targets: invisible and non-interactive by default.
-   Only becomes interactive when parent has rm-dragging class (set imperatively). */
+   Only becomes interactive when parent has rm-dragging class (set imperatively).
+   Position and size are driven by data-position / data-hit-area attributes.
+   Hover state is toggled imperatively via rm-drop-target--over (no React re-render). */
 .rm-mosaic-drop-target {
   pointer-events: none;
+  opacity: 0;
+  background-color: rgba(59, 130, 246, 0.2);
+  border: 2px solid rgba(59, 130, 246, 0.6);
+  border-radius: 4px;
+  transition: opacity 100ms ease-out;
+  z-index: 1000;
 }
+
+/* Default hit area: 30% of the window edge */
+.rm-mosaic-drop-target[data-position="TOP"]    { top: 0; left: 0; right: 0; bottom: 70%; }
+.rm-mosaic-drop-target[data-position="BOTTOM"] { top: 70%; left: 0; right: 0; bottom: 0; }
+.rm-mosaic-drop-target[data-position="LEFT"]   { top: 0; right: 70%; bottom: 0; left: 0; }
+.rm-mosaic-drop-target[data-position="RIGHT"]  { top: 0; right: 0; bottom: 0; left: 70%; }
+
+/* viewport-edge: thin 24px strip */
+.rm-mosaic-drop-target[data-hit-area="viewport-edge"][data-position="TOP"]    { bottom: calc(100% - 24px); }
+.rm-mosaic-drop-target[data-hit-area="viewport-edge"][data-position="BOTTOM"] { top: calc(100% - 24px); }
+.rm-mosaic-drop-target[data-hit-area="viewport-edge"][data-position="LEFT"]   { right: calc(100% - 24px); }
+.rm-mosaic-drop-target[data-hit-area="viewport-edge"][data-position="RIGHT"]  { left: calc(100% - 24px); }
+
+/* Hover state: expand to 50%, show highlight */
+.rm-mosaic-drop-target.rm-drop-target--over { opacity: 1; }
+.rm-mosaic-drop-target.rm-drop-target--over[data-position="TOP"]    { bottom: 50%; }
+.rm-mosaic-drop-target.rm-drop-target--over[data-position="BOTTOM"] { top: 50%; }
+.rm-mosaic-drop-target.rm-drop-target--over[data-position="LEFT"]   { right: 50%; }
+.rm-mosaic-drop-target.rm-drop-target--over[data-position="RIGHT"]  { left: 50%; }
+
+/* viewport-edge hover: expand to 50% */
+.rm-mosaic-drop-target.rm-drop-target--over[data-hit-area="viewport-edge"][data-position="TOP"]    { bottom: 50%; }
+.rm-mosaic-drop-target.rm-drop-target--over[data-hit-area="viewport-edge"][data-position="BOTTOM"] { top: 50%; }
+.rm-mosaic-drop-target.rm-drop-target--over[data-hit-area="viewport-edge"][data-position="LEFT"]   { right: 50%; }
+.rm-mosaic-drop-target.rm-drop-target--over[data-hit-area="viewport-edge"][data-position="RIGHT"]  { left: 50%; }
 
 .rm-dragging .rm-mosaic-drop-target {
   pointer-events: all;

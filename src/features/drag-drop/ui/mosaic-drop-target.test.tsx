@@ -1,9 +1,10 @@
 import { MosaicContext } from '@/shared/lib/context';
 import type { MosaicNode } from '@/shared/types';
 import { MosaicDropTargetPosition } from '@/shared/types';
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, fireEvent, render } from '@testing-library/react';
+import type React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MosaicDropTarget, getDropTargetStyle } from './mosaic-drop-target';
+import { MosaicDropTarget } from './mosaic-drop-target';
 
 afterEach(() => cleanup());
 
@@ -11,7 +12,6 @@ type DropSpec = {
   accept: string;
   canDrop?: (item: unknown) => boolean;
   drop?: (item: unknown) => void;
-  collect?: (monitor: { isOver: () => boolean; canDrop: () => boolean }) => unknown;
 };
 let capturedDropSpec: DropSpec | null = null;
 
@@ -22,9 +22,7 @@ vi.mock('react-dnd', async (importOriginal) => {
     useDrop: vi.fn((specFn: () => DropSpec) => {
       const spec = specFn();
       capturedDropSpec = spec;
-      // invoke collect to cover that branch
-      const collectResult = spec.collect?.({ isOver: () => false, canDrop: () => true });
-      return [collectResult ?? { isOver: false }, vi.fn()];
+      return [{}, vi.fn()];
     }),
   };
 });
@@ -57,65 +55,10 @@ function renderDropTarget(props: Partial<React.ComponentProps<typeof MosaicDropT
   );
 }
 
-describe('getDropTargetStyle', () => {
-  it('uses 30% edge size when not hovered', () => {
-    expect(getDropTargetStyle(MosaicDropTargetPosition.LEFT, false)).toMatchObject({
-      left: 0,
-      right: 'calc(100% - 30%)',
-    });
-    expect(getDropTargetStyle(MosaicDropTargetPosition.TOP, false)).toMatchObject({
-      top: 0,
-      bottom: 'calc(100% - 30%)',
-    });
-  });
-
-  it('expands hovered target to 50% of the window edge', () => {
-    expect(getDropTargetStyle(MosaicDropTargetPosition.RIGHT, true)).toMatchObject({
-      right: 0,
-      left: 'calc(100% - 50%)',
-    });
-    expect(getDropTargetStyle(MosaicDropTargetPosition.BOTTOM, true)).toMatchObject({
-      bottom: 0,
-      top: 'calc(100% - 50%)',
-    });
-  });
-
-  it('uses a thin viewport hit strip and expands to 50% on hover', () => {
-    expect(getDropTargetStyle(MosaicDropTargetPosition.LEFT, false, 'viewport-edge')).toMatchObject(
-      {
-        left: 0,
-        right: 'calc(100% - 24px)',
-      },
-    );
-    expect(getDropTargetStyle(MosaicDropTargetPosition.TOP, true, 'viewport-edge')).toMatchObject({
-      top: 0,
-      bottom: 'calc(100% - 50%)',
-    });
-  });
-
-  it('covers all four positions for window hitArea', () => {
-    for (const pos of [
-      MosaicDropTargetPosition.TOP,
-      MosaicDropTargetPosition.BOTTOM,
-      MosaicDropTargetPosition.LEFT,
-      MosaicDropTargetPosition.RIGHT,
-    ]) {
-      const style = getDropTargetStyle(pos, false, 'window');
-      expect(style.zIndex).toBe(1000);
-    }
-  });
-});
-
 describe('MosaicDropTarget component', () => {
   it('renders a div with rm-mosaic-drop-target class', () => {
     const { container } = renderDropTarget();
     expect(container.querySelector('.rm-mosaic-drop-target')).toBeInTheDocument();
-  });
-
-  it('is not visible (opacity 0) when not hovered', () => {
-    const { container } = renderDropTarget();
-    const el = container.querySelector('.rm-mosaic-drop-target') as HTMLElement;
-    expect(el.style.opacity).toBe('0');
   });
 
   it('renders for each drop target position', () => {
@@ -204,5 +147,75 @@ describe('MosaicDropTarget component', () => {
   it('is memoized — wrapped in React.memo', () => {
     const memoSymbol = Symbol.for('react.memo');
     expect((MosaicDropTarget as unknown as { $$typeof: symbol }).$$typeof).toBe(memoSymbol);
+  });
+});
+
+describe('CSS hover — no React re-render on drag events', () => {
+  it('adds rm-drop-target--over class on dragenter', () => {
+    const { container } = renderDropTarget();
+    const el = container.querySelector('.rm-mosaic-drop-target') as HTMLElement;
+    fireEvent.dragEnter(el);
+    expect(el.classList.contains('rm-drop-target--over')).toBe(true);
+  });
+
+  it('removes rm-drop-target--over class on dragleave', () => {
+    const { container } = renderDropTarget();
+    const el = container.querySelector('.rm-mosaic-drop-target') as HTMLElement;
+    fireEvent.dragEnter(el);
+    fireEvent.dragLeave(el);
+    expect(el.classList.contains('rm-drop-target--over')).toBe(false);
+  });
+
+  it('removes rm-drop-target--over class on drop', () => {
+    const { container } = renderDropTarget();
+    const el = container.querySelector('.rm-mosaic-drop-target') as HTMLElement;
+    fireEvent.dragEnter(el);
+    fireEvent.drop(el);
+    expect(el.classList.contains('rm-drop-target--over')).toBe(false);
+  });
+
+  it('does not trigger React re-render on dragenter/dragleave', () => {
+    let renderCount = 0;
+    const TrackingWrapper = () => {
+      renderCount++;
+      return (
+        <MosaicContext.Provider
+          value={{
+            mosaicActions: mockMosaicActions,
+            mosaicId: 'test',
+            renderTile: () => <></>,
+          }}
+        >
+          <MosaicDropTarget position={MosaicDropTargetPosition.TOP} path={[]} mosaicId="test" />
+        </MosaicContext.Provider>
+      );
+    };
+    const { container } = render(<TrackingWrapper />);
+    const before = renderCount;
+    const el = container.querySelector('.rm-mosaic-drop-target') as HTMLElement;
+    fireEvent.dragEnter(el);
+    fireEvent.dragLeave(el);
+    fireEvent.dragEnter(el);
+    expect(renderCount).toBe(before);
+  });
+});
+
+describe('data attributes', () => {
+  it('sets data-position attribute', () => {
+    const { container } = renderDropTarget({ position: MosaicDropTargetPosition.LEFT });
+    const el = container.querySelector('.rm-mosaic-drop-target') as HTMLElement;
+    expect(el.dataset.position).toBe('LEFT');
+  });
+
+  it('sets data-hit-area="window" by default', () => {
+    const { container } = renderDropTarget();
+    const el = container.querySelector('.rm-mosaic-drop-target') as HTMLElement;
+    expect(el.dataset.hitArea).toBe('window');
+  });
+
+  it('sets data-hit-area="viewport-edge" when provided', () => {
+    const { container } = renderDropTarget({ hitArea: 'viewport-edge' });
+    const el = container.querySelector('.rm-mosaic-drop-target') as HTMLElement;
+    expect(el.dataset.hitArea).toBe('viewport-edge');
   });
 });

@@ -1,8 +1,7 @@
-import { createDragToUpdates } from '@/shared/lib';
+import { canDropOnTarget, createDragToUpdates } from '@/shared/lib';
 import { MosaicContext } from '@/shared/lib/context';
-import type { MosaicDragItem, MosaicPath } from '@/shared/types';
-import { MosaicDropTargetPosition } from '@/shared/types';
-import React, { useContext, useMemo, useRef } from 'react';
+import type { MosaicDragItem, MosaicDropTargetPosition, MosaicPath } from '@/shared/types';
+import React, { useCallback, useContext, useRef } from 'react';
 import { useDrop } from 'react-dnd';
 
 export interface MosaicDropTargetProps {
@@ -21,90 +20,74 @@ const MosaicDropTargetImpl = ({
   hitArea = 'window',
 }: MosaicDropTargetProps) => {
   const { mosaicActions } = useContext(MosaicContext);
+  const divRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef(path);
   pathRef.current = path;
   const mosaicActionsRef = useRef(mosaicActions);
   mosaicActionsRef.current = mosaicActions;
+  // Store primitives in refs so useDrop spec never needs to be recreated.
+  const positionRef = useRef(position);
+  positionRef.current = position;
+  const mosaicIdRef = useRef(mosaicId);
+  mosaicIdRef.current = mosaicId;
 
-  const [{ isOver }, drop] = useDrop<MosaicDragItem, void, { isOver: boolean }>(
+  // No collect fn → isOver changes never trigger React re-renders.
+  // Empty deps: all values are read from refs at call time, so the spec is
+  // created once and never recreated — drop connector stays stable across renders.
+  const [, drop] = useDrop<MosaicDragItem, void, void>(
     () => ({
       accept: DRAG_ITEM_TYPE,
       canDrop: (item) => {
-        if (item.mosaicId !== mosaicId) return false;
+        if (item.mosaicId !== mosaicIdRef.current) return false;
         const root = mosaicActionsRef.current.getRoot();
         if (!root) return false;
-        return createDragToUpdates(root, item.path, pathRef.current, position).length > 0;
+        // canDropOnTarget is O(depth×2) vs createDragToUpdates which is O(depth×2 + tree mutations).
+        // canDrop is called 30-60×/s during hover; drop is called once on release.
+        return canDropOnTarget(root, item.path, pathRef.current);
       },
       drop: (item) => {
         const root = mosaicActionsRef.current.getRoot();
         if (!root) return;
-
-        const updates = createDragToUpdates(root, item.path, pathRef.current, position);
+        const updates = createDragToUpdates(root, item.path, pathRef.current, positionRef.current);
         if (updates.length === 0) return;
         mosaicActionsRef.current.updateTree(updates);
       },
-      collect: (monitor) => ({
-        isOver: monitor.isOver() && monitor.canDrop(),
-      }),
     }),
-    [mosaicId, position],
+    [],
   );
 
-  const style = useMemo<React.CSSProperties>(
-    () => ({
-      ...getDropTargetStyle(position, isOver, hitArea),
-      opacity: isOver ? 1 : 0,
-      backgroundColor: 'rgba(59, 130, 246, 0.2)',
-      border: '2px solid rgba(59, 130, 246, 0.6)',
-      borderRadius: '4px',
-      transition: 'opacity 100ms ease-out',
-    }),
-    [position, isOver, hitArea],
+  const setRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      drop(el);
+      (divRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    },
+    [drop],
   );
+
+  const handleDragEnter = useCallback(() => {
+    divRef.current?.classList.add('rm-drop-target--over');
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    divRef.current?.classList.remove('rm-drop-target--over');
+  }, []);
+
+  const handleDrop = useCallback(() => {
+    divRef.current?.classList.remove('rm-drop-target--over');
+  }, []);
 
   return (
     <div
-      ref={drop}
+      ref={setRef}
       onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => e.preventDefault()}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       className="rm-mosaic-drop-target rm-absolute"
-      style={style}
+      data-position={position}
+      data-hit-area={hitArea}
     />
   );
 };
 
 export const MosaicDropTarget = React.memo(MosaicDropTargetImpl);
-
-const EDGE_HIT_SIZE = '30%';
-const EDGE_HOVER_SIZE = '50%';
-const VIEWPORT_EDGE_HIT_SIZE = '24px';
-
-export const getDropTargetStyle = (
-  position: MosaicDropTargetPosition,
-  isOver: boolean,
-  hitArea: 'window' | 'viewport-edge' = 'window',
-): React.CSSProperties => {
-  // Match the original react-mosaic behavior:
-  // default edge hit area is 30%, and hovered preview expands to 50%.
-  const size =
-    hitArea === 'viewport-edge'
-      ? isOver
-        ? EDGE_HOVER_SIZE
-        : VIEWPORT_EDGE_HIT_SIZE
-      : isOver
-        ? EDGE_HOVER_SIZE
-        : EDGE_HIT_SIZE;
-  const baseStyle = { zIndex: 1000 };
-  const oppositeInset = `calc(100% - ${size})`;
-
-  switch (position) {
-    case MosaicDropTargetPosition.TOP:
-      return { ...baseStyle, top: 0, left: 0, right: 0, bottom: oppositeInset };
-    case MosaicDropTargetPosition.BOTTOM:
-      return { ...baseStyle, top: oppositeInset, left: 0, right: 0, bottom: 0 };
-    case MosaicDropTargetPosition.LEFT:
-      return { ...baseStyle, top: 0, right: oppositeInset, bottom: 0, left: 0 };
-    case MosaicDropTargetPosition.RIGHT:
-      return { ...baseStyle, top: 0, right: 0, bottom: 0, left: oppositeInset };
-  }
-};

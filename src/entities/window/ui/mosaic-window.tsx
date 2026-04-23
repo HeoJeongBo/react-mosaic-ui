@@ -9,8 +9,8 @@ import type {
 } from '@/shared/types';
 import type { MosaicWindowActions } from '@/shared/types';
 import classNames from 'classnames';
-import React, { type ReactNode, useContext, useMemo, useRef, useState } from 'react';
-import { useDrag, useDragLayer } from 'react-dnd';
+import React, { type ReactNode, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import { useDrag } from 'react-dnd';
 
 const DRAG_ITEM_TYPE = 'MosaicWindow';
 
@@ -182,46 +182,45 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
   const { mosaicWindowActions } = useContext(MosaicWindowContext);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // isDragging is subscribed here (toolbar scope only) so the window body
-  // and children are never re-rendered when drag state changes.
-  const { isDragging } = useDragLayer((monitor) => ({
-    isDragging: monitor.isDragging(),
-  }));
+  // path comes as a new array reference each render; store in ref so callbacks
+  // that read it don't need to list it as a dep (mosaicActions is already stable).
+  const pathRef = useRef(path);
+  pathRef.current = path;
 
-  const handleExpand = () => {
-    mosaicActions.expand(path);
-  };
+  const handleExpand = useCallback(() => {
+    mosaicActions.expand(pathRef.current);
+  }, [mosaicActions]);
 
-  const handleRemove = () => {
-    mosaicActions.remove(path);
-  };
+  const handleRemove = useCallback(() => {
+    mosaicActions.remove(pathRef.current);
+  }, [mosaicActions]);
 
-  const handleSplit = async () => {
+  const handleSplit = useCallback(async () => {
     try {
       await mosaicWindowActions.split();
     } catch (error) {
       console.error('Split failed:', error);
     }
-  };
+  }, [mosaicWindowActions]);
 
-  const handleReplace = async () => {
+  const handleReplace = useCallback(async () => {
     try {
       await mosaicWindowActions.replaceWithNew();
     } catch (error) {
       console.error('Replace failed:', error);
     }
-  };
+  }, [mosaicWindowActions]);
 
-  const toggleDrawer = () => {
-    setIsDrawerOpen(!isDrawerOpen);
-  };
+  const toggleDrawer = useCallback(() => {
+    setIsDrawerOpen((prev) => !prev);
+  }, []);
 
   return (
     <>
       <div className="rm-mosaic-window-toolbar rm-flex rm-items-center rm-justify-between rm-px-4 rm-py-2 rm-bg-mosaic-toolbar rm-border-b rm-border-mosaic-border rm-select-none">
         <div
           ref={dragHandle.ref}
-          className={`rm-mosaic-window-title rm-font-medium rm-text-sm rm-cursor-move${isDragging ? ' rm-opacity-50' : ''}`}
+          className="rm-mosaic-window-title rm-font-medium rm-text-sm rm-cursor-move"
         >
           {title}
         </div>
@@ -287,8 +286,8 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
 const MosaicWindowToolbar = React.memo(MosaicWindowToolbarImpl, (prev, next) => {
   if (!arePathsEqual(prev.path, next.path)) return false;
 
-  // dragHandle.ref is stable (useDrag ref doesn't change), but isDragging can change.
-  // We include dragHandle in comparison so toolbar re-renders when isDragging flips.
+  // dragHandle.ref is stable (useDrag ref never changes).
+  // isDragging is handled via CSS (.rm-dragging on the root container) — no re-render needed.
   const skipKeys = new Set(['path']);
   const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
   for (const key of keys) {
