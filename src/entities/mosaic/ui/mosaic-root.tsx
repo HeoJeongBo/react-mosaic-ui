@@ -71,6 +71,9 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
 
   const handleSplitChange = useCallback(
     (newPercentage: number) => {
+      // pathKey in deps ensures this callback is recreated when the path moves in
+      // the tree, while pathRef.current provides the actual latest value at call time.
+      void pathKey;
       const root = mosaicActions.getRoot();
       if (!root) return;
 
@@ -86,14 +89,12 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
         true,
       );
     },
-    // pathRef.current always holds the latest path; pathKey triggers re-creation
-    // only when path content changes, avoiding re-creation on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [mosaicActions, pathKey],
   );
 
   const handleSplitRelease = useCallback(
     (newPercentage: number) => {
+      void pathKey;
       const root = mosaicActions.getRoot();
       if (!root) return;
 
@@ -106,15 +107,19 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
         },
       ]);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [mosaicActions, pathKey],
   );
 
   // Hooks must run unconditionally before any early return.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const firstPath = useMemo(() => [...pathRef.current, 'first'] as MosaicPath, [pathKey]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const secondPath = useMemo(() => [...pathRef.current, 'second'] as MosaicPath, [pathKey]);
+  // pathKey in deps invalidates only when path content changes (not on every render).
+  const firstPath = useMemo(() => {
+    void pathKey;
+    return [...pathRef.current, 'first'] as MosaicPath;
+  }, [pathKey]);
+  const secondPath = useMemo(() => {
+    void pathKey;
+    return [...pathRef.current, 'second'] as MosaicPath;
+  }, [pathKey]);
 
   if (!isParent(node)) {
     return (

@@ -130,13 +130,7 @@ export const Split = ({
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     },
-    [
-      direction,
-      onRelease,
-      minimumPaneSizePercentage,
-      flushPendingChange,
-      scheduleChange,
-    ],
+    [direction, onRelease, minimumPaneSizePercentage, flushPendingChange, scheduleChange],
   );
 
   const handleTouchStart = useCallback(
@@ -199,13 +193,7 @@ export const Split = ({
       document.addEventListener('touchmove', handleTouchMove, { passive: false });
       document.addEventListener('touchend', handleTouchEnd);
     },
-    [
-      direction,
-      onRelease,
-      minimumPaneSizePercentage,
-      flushPendingChange,
-      scheduleChange,
-    ],
+    [direction, onRelease, minimumPaneSizePercentage, flushPendingChange, scheduleChange],
   );
 
   const isRow = direction === 'row';
