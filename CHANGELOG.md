@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.6](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.2.5...v2.2.6) (2026-04-24)
+
+### Bug Fixes
+
+* improve drag end performance ([9f4ae4f](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/9f4ae4fda586fdd2c378b509a4936c8f9e58d3ed))
+
 ## [2.2.5](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.2.4...v2.2.5) (2026-04-23)
 
 ### Features
