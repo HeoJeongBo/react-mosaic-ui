@@ -216,14 +216,22 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const monitor = managerRef.current!.getMonitor();
+    let wasDragging = false;
     const unsubscribe = monitor.subscribeToStateChange(() => {
       const isDragging = monitor.isDragging();
-      // Defer the DOM mutation to avoid Chrome's bug where modifying an
-      // ancestor element synchronously during `dragstart` immediately cancels
-      // the drag and fires `dragend`.
-      setTimeout(() => {
-        containerRef.current?.classList.toggle('rm-dragging', isDragging);
-      }, 0);
+      if (isDragging === wasDragging) return;
+      wasDragging = isDragging;
+
+      if (isDragging) {
+        // Defer start: Chrome cancels drag if ancestor DOM is mutated
+        // synchronously during the dragstart event.
+        setTimeout(() => {
+          containerRef.current?.classList.add('rm-dragging');
+        }, 0);
+      } else {
+        // End: apply immediately for instant visual feedback.
+        containerRef.current?.classList.remove('rm-dragging');
+      }
     });
     return unsubscribe;
   }, []);
