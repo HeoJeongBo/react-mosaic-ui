@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.2](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.3.1...v2.3.2) (2026-05-27)
+
+### Features
+
+* add initial node ([9881700](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/988170039e0ca75c06ea17ad934510a1aa24c0e7))
+
 ## [2.3.1](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.3.0...v2.3.1) (2026-05-27)
 
 ### Features
