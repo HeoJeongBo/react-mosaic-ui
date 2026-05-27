@@ -36,6 +36,7 @@ export interface MosaicBaseProps<T extends MosaicKey> {
   zeroStateView?: JSX.Element;
   mosaicId?: string;
   createNode?: CreateNode<T>;
+  children?: React.ReactNode;
 }
 
 export interface MosaicControlledProps<T extends MosaicKey> extends MosaicBaseProps<T> {
@@ -79,6 +80,7 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
     resize,
     zeroStateView,
     mosaicId = 'default-mosaic',
+    children,
   } = props;
 
   const controlled = isControlled(props);
@@ -288,6 +290,7 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
               className="rm-w-full rm-h-full"
             />
           )}
+          {children}
         </div>
       </MosaicContext.Provider>
     </DndContext.Provider>

@@ -8,7 +8,7 @@ import {
   getLeaves,
   useMosaicPanels,
 } from '@heojeongbo/react-mosaic-ui';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // ---------------------------------------------------------------------------
 // Tab button
@@ -35,6 +35,13 @@ function TabButton({
 // ---------------------------------------------------------------------------
 
 function PanelContent({ title, index }: { title: string; index: number }) {
+  useEffect(() => {
+    console.log(`[PanelContent] mount — ${title} (#${index})`);
+    return () => {
+      console.log(`[PanelContent] unmount — ${title} (#${index})`);
+    };
+  }, [title, index]);
+
   return (
     <div className="panel-content">
       <div className="panel-index">#{index}</div>

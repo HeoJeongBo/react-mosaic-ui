@@ -1,7 +1,7 @@
 import { MosaicContext } from '@/shared/lib/context';
 import type { MosaicContextValue, MosaicNode, MosaicPanelConfig } from '@/shared/types';
 import { act, cleanup, render, screen } from '@testing-library/react';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import type React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MosaicLayout } from './mosaic-layout';
@@ -116,19 +116,12 @@ describe('MosaicLayout', () => {
     });
 
     it('removing panel 2→1: remaining panel becomes a single leaf', () => {
-      let capturedNode: MosaicNode<string> | null = null;
-      const ContextCapture = () => {
-        const ctx = useContext(MosaicContext) as MosaicContextValue<string>;
-        capturedNode = ctx.mosaicActions.getRoot();
-        return null;
-      };
-      const { rerender } = render(
-        <MosaicLayout panels={[makePanel('a', { content: <ContextCapture /> }), makePanel('b')]} />,
-      );
+      const { rerender } = render(<MosaicLayout panels={[makePanel('a'), makePanel('b')]} />);
 
-      rerender(<MosaicLayout panels={[makePanel('a', { content: <ContextCapture /> })]} />);
+      rerender(<MosaicLayout panels={[makePanel('a')]} />);
 
-      expect(capturedNode).toBe('a');
+      expect(screen.getByTestId('content-a')).toBeInTheDocument();
+      expect(screen.queryByTestId('content-b')).toBeNull();
     });
 
     it('panels=[] → currentNode is null (shows zeroStateView)', () => {
@@ -143,15 +136,9 @@ describe('MosaicLayout', () => {
     });
 
     it('adding first panel from null state → single leaf tree', () => {
-      let capturedNode: MosaicNode<string> | null = null;
-      const ContextCapture = () => {
-        const ctx = useContext(MosaicContext) as MosaicContextValue<string>;
-        capturedNode = ctx.mosaicActions.getRoot();
-        return null;
-      };
       const { rerender } = render(<MosaicLayout panels={[]} zeroStateView={<div>empty</div>} />);
-      rerender(<MosaicLayout panels={[makePanel('a', { content: <ContextCapture /> })]} />);
-      expect(capturedNode).toBe('a');
+      rerender(<MosaicLayout panels={[makePanel('a')]} />);
+      expect(screen.getByTestId('content-a')).toBeInTheDocument();
     });
 
     it('removing already-absent id is a no-op (content-a preserved)', () => {
@@ -172,15 +159,10 @@ describe('MosaicLayout', () => {
     });
 
     it('full panel swap (remove a + add b simultaneously): b becomes a single leaf', () => {
-      let capturedNode: MosaicNode<string> | null = null;
-      const ContextCapture = () => {
-        const ctx = useContext(MosaicContext) as MosaicContextValue<string>;
-        capturedNode = ctx.mosaicActions.getRoot();
-        return null;
-      };
       const { rerender } = render(<MosaicLayout panels={[makePanel('a')]} />);
-      rerender(<MosaicLayout panels={[makePanel('b', { content: <ContextCapture /> })]} />);
-      expect(capturedNode).toBe('b');
+      rerender(<MosaicLayout panels={[makePanel('b')]} />);
+      expect(screen.getByTestId('content-b')).toBeInTheDocument();
+      expect(screen.queryByTestId('content-a')).toBeNull();
     });
   });
 
@@ -230,6 +212,74 @@ describe('MosaicLayout', () => {
         />,
       );
       expect(screen.getByTestId('zero')).toBeInTheDocument();
+    });
+  });
+
+  describe('stable mount (portal)', () => {
+    it('adding a panel does not unmount existing panels', () => {
+      let mountCount = 0;
+      let unmountCount = 0;
+
+      const StablePanel = () => {
+        useEffect(() => {
+          mountCount++;
+          return () => {
+            unmountCount++;
+          };
+        }, []);
+        return <div data-testid="stable-panel" />;
+      };
+
+      const { rerender } = render(
+        <MosaicLayout panels={[makePanel('a', { content: <StablePanel /> })]} />,
+      );
+
+      expect(mountCount).toBe(1);
+      expect(unmountCount).toBe(0);
+
+      rerender(
+        <MosaicLayout panels={[makePanel('a', { content: <StablePanel /> }), makePanel('b')]} />,
+      );
+
+      expect(unmountCount).toBe(0);
+    });
+
+    it('removing a panel unmounts only that panel', () => {
+      let unmountCountA = 0;
+      let unmountCountB = 0;
+
+      const PanelA = () => {
+        useEffect(
+          () => () => {
+            unmountCountA++;
+          },
+          [],
+        );
+        return <div data-testid="panel-a" />;
+      };
+      const PanelB = () => {
+        useEffect(
+          () => () => {
+            unmountCountB++;
+          },
+          [],
+        );
+        return <div data-testid="panel-b" />;
+      };
+
+      const { rerender } = render(
+        <MosaicLayout
+          panels={[
+            makePanel('a', { content: <PanelA /> }),
+            makePanel('b', { content: <PanelB /> }),
+          ]}
+        />,
+      );
+
+      rerender(<MosaicLayout panels={[makePanel('a', { content: <PanelA /> })]} />);
+
+      expect(unmountCountA).toBe(0);
+      expect(unmountCountB).toBe(1);
     });
   });
 
