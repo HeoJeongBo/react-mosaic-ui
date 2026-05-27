@@ -311,7 +311,11 @@ describe('MosaicWindow', () => {
       let renderCount = 0;
       const CountingImpl = (props: React.ComponentProps<typeof MosaicWindow<string>>) => {
         renderCount++;
-        return <MosaicWindow {...props}><div>child</div></MosaicWindow>;
+        return (
+          <MosaicWindow {...props}>
+            <div>child</div>
+          </MosaicWindow>
+        );
       };
       const Counting = React.memo(CountingImpl);
 

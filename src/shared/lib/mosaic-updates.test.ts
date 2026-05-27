@@ -820,9 +820,7 @@ describe('mosaic-updates', () => {
         second: 'b',
         splitPercentage: 50,
       };
-      const result = updateTree(root, [
-        { path: [], spec: { direction: { $set: 'column' } } },
-      ]);
+      const result = updateTree(root, [{ path: [], spec: { direction: { $set: 'column' } } }]);
       expect((result as typeof root).direction).toBe('column');
     });
 

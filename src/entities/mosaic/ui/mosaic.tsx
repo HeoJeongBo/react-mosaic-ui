@@ -261,7 +261,7 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
           // End: apply immediately for instant visual feedback.
           containerRef.current?.classList.remove('rm-dragging');
         }
-      }, /* v8 ignore stop */
+      } /* v8 ignore stop */,
     );
     return unsubscribe;
   }, []);

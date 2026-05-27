@@ -521,9 +521,7 @@ describe('Mosaic', () => {
         return <div>a</div>;
       };
 
-      render(
-        <Mosaic value="a" onChange={onChange} renderTile={() => <CapturingTile />} />,
-      );
+      render(<Mosaic value="a" onChange={onChange} renderTile={() => <CapturingTile />} />);
 
       capturedActions!.mosaicActions.add('b', 'column');
       const newTree = onChange.mock.calls[0]?.[0] as MosaicParent<string>;
@@ -539,9 +537,7 @@ describe('Mosaic', () => {
         return <div data-testid="tile-a">a</div>;
       };
 
-      render(
-        <Mosaic initialValue="a" renderTile={() => <CapturingTile />} />,
-      );
+      render(<Mosaic initialValue="a" renderTile={() => <CapturingTile />} />);
 
       expect(() => capturedActions!.mosaicActions.add('b')).not.toThrow();
     });
@@ -657,12 +653,7 @@ describe('Mosaic', () => {
         return <div data-testid="tile-a">a</div>;
       };
 
-      render(
-        <Mosaic
-          initialValue="a"
-          renderTile={() => <CapturingTile />}
-        />,
-      );
+      render(<Mosaic initialValue="a" renderTile={() => <CapturingTile />} />);
 
       // Removing at path [] throws (cannot remove root), triggering the catch block
       // which sets internal state to null in uncontrolled mode
@@ -763,10 +754,7 @@ describe('Mosaic', () => {
       );
 
       // $set in spec — should use regular updateTree (not the optimized path)
-      capturedActions!.mosaicActions.updateTree(
-        [{ path: ['first'], spec: { $set: 'c' } }],
-        true,
-      );
+      capturedActions!.mosaicActions.updateTree([{ path: ['first'], spec: { $set: 'c' } }], true);
       expect(onChange).toHaveBeenCalled();
     });
   });
@@ -905,7 +893,9 @@ describe('Mosaic', () => {
         return {
           ...actual,
           createDragDropManager: vi.fn((...args: unknown[]) => {
-            const manager = actual.createDragDropManager(...(args as Parameters<typeof actual.createDragDropManager>));
+            const manager = actual.createDragDropManager(
+              ...(args as Parameters<typeof actual.createDragDropManager>),
+            );
             const originalGetMonitor = manager.getMonitor.bind(manager);
             manager.getMonitor = () => {
               const monitor = originalGetMonitor();

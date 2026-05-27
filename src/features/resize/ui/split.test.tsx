@@ -309,7 +309,10 @@ describe('Split', () => {
     });
 
     it('handles column direction touch drag', () => {
-      const { container, onChange, onRelease } = renderSplit({ direction: 'column', percentage: 50 });
+      const { container, onChange, onRelease } = renderSplit({
+        direction: 'column',
+        percentage: 50,
+      });
       const el = container.firstChild as HTMLElement;
 
       const parent = document.createElement('div');

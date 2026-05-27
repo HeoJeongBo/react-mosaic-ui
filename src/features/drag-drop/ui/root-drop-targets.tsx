@@ -24,14 +24,26 @@ const RootDropTargetsImpl = () => {
         className="rm-root-drop-targets rm-absolute"
         style={{ inset: 0, zIndex: 990, pointerEvents: 'none' }}
       >
-        <MosaicDropTarget position={MosaicDropTargetPosition.TOP} path={ROOT_PATH} mosaicId={mosaicId} />
+        <MosaicDropTarget
+          position={MosaicDropTargetPosition.TOP}
+          path={ROOT_PATH}
+          mosaicId={mosaicId}
+        />
         <MosaicDropTarget
           position={MosaicDropTargetPosition.BOTTOM}
           path={ROOT_PATH}
           mosaicId={mosaicId}
         />
-        <MosaicDropTarget position={MosaicDropTargetPosition.LEFT} path={ROOT_PATH} mosaicId={mosaicId} />
-        <MosaicDropTarget position={MosaicDropTargetPosition.RIGHT} path={ROOT_PATH} mosaicId={mosaicId} />
+        <MosaicDropTarget
+          position={MosaicDropTargetPosition.LEFT}
+          path={ROOT_PATH}
+          mosaicId={mosaicId}
+        />
+        <MosaicDropTarget
+          position={MosaicDropTargetPosition.RIGHT}
+          path={ROOT_PATH}
+          mosaicId={mosaicId}
+        />
       </div>
       <div
         className="rm-viewport-edge-drop-targets"

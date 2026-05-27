@@ -229,7 +229,9 @@ describe('setRef callback', () => {
   it('passes the DOM element to the drop connector on mount', async () => {
     // The useDrop mock returns a drop fn; we verify setRef calls it with the element.
     let capturedDropArg: unknown = undefined;
-    const dropFn = vi.fn((el: unknown) => { capturedDropArg = el; });
+    const dropFn = vi.fn((el: unknown) => {
+      capturedDropArg = el;
+    });
 
     const reactDnd = await import('react-dnd');
     const useDropMock = vi.mocked(reactDnd.useDrop);

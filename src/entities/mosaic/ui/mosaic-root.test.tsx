@@ -171,8 +171,15 @@ describe('MosaicRoot', () => {
       const parent = document.createElement('div');
       Object.defineProperty(splitEl, 'parentElement', { get: () => parent, configurable: true });
       vi.spyOn(parent, 'getBoundingClientRect').mockReturnValue({
-        width: 1000, height: 600, top: 0, left: 0, right: 1000, bottom: 600,
-        x: 0, y: 0, toJSON: () => {},
+        width: 1000,
+        height: 600,
+        top: 0,
+        left: 0,
+        right: 1000,
+        bottom: 600,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
       } as DOMRect);
 
       fireEvent.mouseDown(splitEl, { clientX: 500, clientY: 0 });
@@ -209,8 +216,15 @@ describe('MosaicRoot', () => {
       const parent = document.createElement('div');
       Object.defineProperty(splitEl, 'parentElement', { get: () => parent, configurable: true });
       vi.spyOn(parent, 'getBoundingClientRect').mockReturnValue({
-        width: 1000, height: 600, top: 0, left: 0, right: 1000, bottom: 600,
-        x: 0, y: 0, toJSON: () => {},
+        width: 1000,
+        height: 600,
+        top: 0,
+        left: 0,
+        right: 1000,
+        bottom: 600,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
       } as DOMRect);
 
       fireEvent.mouseDown(splitEl, { clientX: 500, clientY: 0 });

@@ -1,4 +1,11 @@
-import type { MosaicDirection, MosaicKey, MosaicNode, MosaicPath, MosaicUpdate, TileRenderer } from './mosaic.types';
+import type {
+  MosaicDirection,
+  MosaicKey,
+  MosaicNode,
+  MosaicPath,
+  MosaicUpdate,
+  TileRenderer,
+} from './mosaic.types';
 
 /**
  * Root-level actions available through MosaicContext
