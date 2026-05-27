@@ -26,12 +26,7 @@ const makePanel = (id: string, overrides: Partial<MosaicPanelConfig> = {}): Mosa
 
 describe('MosaicLayout', () => {
   it('renders zeroStateView when panels=[] and zeroStateView is provided', () => {
-    render(
-      <MosaicLayout
-        panels={[]}
-        zeroStateView={<div data-testid="zero">No items</div>}
-      />,
-    );
+    render(<MosaicLayout panels={[]} zeroStateView={<div data-testid="zero">No items</div>} />);
     expect(screen.getByTestId('zero')).toBeInTheDocument();
   });
 
@@ -82,9 +77,7 @@ describe('MosaicLayout', () => {
   });
 
   it('passes className prop to Mosaic', () => {
-    const { container } = render(
-      <MosaicLayout panels={[makePanel('a')]} className="my-layout" />,
-    );
+    const { container } = render(<MosaicLayout panels={[makePanel('a')]} className="my-layout" />);
     expect(container.querySelector('.my-layout')).toBeInTheDocument();
   });
 
@@ -94,9 +87,7 @@ describe('MosaicLayout', () => {
   });
 
   it('returns empty div for unknown id in renderTile', () => {
-    const { rerender } = render(
-      <MosaicLayout panels={[makePanel('a'), makePanel('b')]} />,
-    );
+    const { rerender } = render(<MosaicLayout panels={[makePanel('a'), makePanel('b')]} />);
     rerender(<MosaicLayout panels={[makePanel('a')]} />);
     expect(screen.getByTestId('content-a')).toBeInTheDocument();
   });
@@ -109,24 +100,18 @@ describe('MosaicLayout', () => {
         capturedNode = ctx.mosaicActions.getRoot();
         return null;
       };
-      const panels: MosaicPanelConfig[] = [
-        makePanel('a', { content: <ContextCapture /> }),
-      ];
+      const panels: MosaicPanelConfig[] = [makePanel('a', { content: <ContextCapture /> })];
       const { rerender } = render(<MosaicLayout panels={panels} />);
 
       rerender(
-        <MosaicLayout
-          panels={[
-            makePanel('a', { content: <ContextCapture /> }),
-            makePanel('b'),
-          ]}
-        />,
+        <MosaicLayout panels={[makePanel('a', { content: <ContextCapture /> }), makePanel('b')]} />,
       );
 
       expect(capturedNode).not.toBeNull();
-      expect(typeof capturedNode === 'object' && capturedNode !== null && 'first' in capturedNode
-        ? (capturedNode as { first: string }).first
-        : capturedNode
+      expect(
+        typeof capturedNode === 'object' && capturedNode !== null && 'first' in capturedNode
+          ? (capturedNode as { first: string }).first
+          : capturedNode,
       ).toBe('a');
     });
 
@@ -138,17 +123,10 @@ describe('MosaicLayout', () => {
         return null;
       };
       const { rerender } = render(
-        <MosaicLayout
-          panels={[
-            makePanel('a', { content: <ContextCapture /> }),
-            makePanel('b'),
-          ]}
-        />,
+        <MosaicLayout panels={[makePanel('a', { content: <ContextCapture /> }), makePanel('b')]} />,
       );
 
-      rerender(
-        <MosaicLayout panels={[makePanel('a', { content: <ContextCapture /> })]} />,
-      );
+      rerender(<MosaicLayout panels={[makePanel('a', { content: <ContextCapture /> })]} />);
 
       expect(capturedNode).toBe('a');
     });
@@ -160,12 +138,7 @@ describe('MosaicLayout', () => {
           zeroStateView={<div data-testid="zero">empty</div>}
         />,
       );
-      rerender(
-        <MosaicLayout
-          panels={[]}
-          zeroStateView={<div data-testid="zero">empty</div>}
-        />,
-      );
+      rerender(<MosaicLayout panels={[]} zeroStateView={<div data-testid="zero">empty</div>} />);
       expect(screen.getByTestId('zero')).toBeInTheDocument();
     });
 
@@ -176,19 +149,13 @@ describe('MosaicLayout', () => {
         capturedNode = ctx.mosaicActions.getRoot();
         return null;
       };
-      const { rerender } = render(
-        <MosaicLayout panels={[]} zeroStateView={<div>empty</div>} />,
-      );
-      rerender(
-        <MosaicLayout panels={[makePanel('a', { content: <ContextCapture /> })]} />,
-      );
+      const { rerender } = render(<MosaicLayout panels={[]} zeroStateView={<div>empty</div>} />);
+      rerender(<MosaicLayout panels={[makePanel('a', { content: <ContextCapture /> })]} />);
       expect(capturedNode).toBe('a');
     });
 
     it('removing already-absent id is a no-op (content-a preserved)', () => {
-      const { rerender } = render(
-        <MosaicLayout panels={[makePanel('a'), makePanel('b')]} />,
-      );
+      const { rerender } = render(<MosaicLayout panels={[makePanel('a'), makePanel('b')]} />);
       rerender(<MosaicLayout panels={[makePanel('a'), makePanel('b')]} />);
       expect(screen.getByTestId('content-a')).toBeInTheDocument();
       expect(screen.getByTestId('content-b')).toBeInTheDocument();

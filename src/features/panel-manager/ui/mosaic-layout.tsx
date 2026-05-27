@@ -8,7 +8,13 @@ import {
   isParent,
   updateTree,
 } from '@/shared/lib';
-import type { MosaicKey, MosaicNode, MosaicPanelConfig, MosaicPath, MosaicUpdate } from '@/shared/types';
+import type {
+  MosaicKey,
+  MosaicNode,
+  MosaicPanelConfig,
+  MosaicPath,
+  MosaicUpdate,
+} from '@/shared/types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 function getPathToLeaf<T extends MosaicKey>(

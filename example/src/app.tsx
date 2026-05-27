@@ -24,11 +24,7 @@ function TabButton({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`demo-tab${active ? ' active' : ''}`}
-    >
+    <button type="button" onClick={onClick} className={`demo-tab${active ? ' active' : ''}`}>
       {children}
     </button>
   );
@@ -110,7 +106,11 @@ function HighLevelDemo() {
 type LowLevelViewId = 'a' | 'b' | 'c' | 'd' | 'new';
 
 const LOW_LEVEL_TITLE: Record<LowLevelViewId, string> = {
-  a: 'Window A', b: 'Window B', c: 'Window C', d: 'Window D', new: 'New Window',
+  a: 'Window A',
+  b: 'Window B',
+  c: 'Window C',
+  d: 'Window D',
+  new: 'New Window',
 };
 
 function LowLevelDemo() {
@@ -157,9 +157,7 @@ function LowLevelDemo() {
       >
         <div className="window-content">
           <h2>{LOW_LEVEL_TITLE[id]}</h2>
-          <div className="window-path">
-            path: {path.length > 0 ? path.join(' → ') : 'root'}
-          </div>
+          <div className="window-path">path: {path.length > 0 ? path.join(' → ') : 'root'}</div>
         </div>
       </MosaicWindow>
     ),
@@ -190,12 +188,13 @@ function LowLevelDemo() {
       </div>
 
       <div className="demo-code-hint">
-        <span className="demo-code-keyword">const</span>{' '}
-        {'[currentNode, setCurrentNode] = '}
+        <span className="demo-code-keyword">const</span> {'[currentNode, setCurrentNode] = '}
         <span className="demo-code-fn">useState</span>
         {'<MosaicNode<ViewId> | null>(initialTree)'}
         <br />
-        <span className="demo-code-comment">{'// manage tree directly — wire renderTile and onChange manually'}</span>
+        <span className="demo-code-comment">
+          {'// manage tree directly — wire renderTile and onChange manually'}
+        </span>
       </div>
 
       <div className="demo-mosaic-area">

@@ -1,7 +1,12 @@
 import { renderHook } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it } from 'vitest';
-import { MosaicContext, MosaicWindowContext, useMosaicContext, useMosaicWindowContext } from './context';
+import {
+  MosaicContext,
+  MosaicWindowContext,
+  useMosaicContext,
+  useMosaicWindowContext,
+} from './context';
 
 describe('useMosaicContext', () => {
   it('returns default context value when called outside Provider', () => {

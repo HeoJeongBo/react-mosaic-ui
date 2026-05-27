@@ -26,9 +26,7 @@ export function useMosaicPanels<TId extends MosaicKey = string>() {
   const clearPanels = useCallback(() => setPanels([]), []);
 
   const updatePanel = useCallback((id: TId, updates: Partial<MosaicPanelConfig<TId>>) => {
-    setPanels((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates, id: p.id } : p)),
-    );
+    setPanels((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates, id: p.id } : p)));
   }, []);
 
   const getPanelById = useCallback(
@@ -36,5 +34,14 @@ export function useMosaicPanels<TId extends MosaicKey = string>() {
     [panels],
   );
 
-  return { panels, addPanel, removePanel, togglePanel, hasPanel, clearPanels, updatePanel, getPanelById };
+  return {
+    panels,
+    addPanel,
+    removePanel,
+    togglePanel,
+    hasPanel,
+    clearPanels,
+    updatePanel,
+    getPanelById,
+  };
 }
