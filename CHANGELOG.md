@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.2.6...v2.3.0) (2026-05-27)
+
+### Bug Fixes
+
+* lint ([b57fd00](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/b57fd00578a2e0eddd37c1b34d6b0bc8a95eb790))
+* performance issue ([15a1b1d](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/15a1b1d5aa825bd23580bb0ee92aebdc703a585a))
+
 ## [2.2.6](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.2.5...v2.2.6) (2026-04-24)
 
 ### Bug Fixes
