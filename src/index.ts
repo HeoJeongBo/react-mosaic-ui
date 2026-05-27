@@ -12,7 +12,7 @@ export type {
 } from './entities/mosaic';
 
 export { MosaicWindow } from './entities/window';
-export type { MosaicWindowProps } from './entities/window';
+export type { MosaicWindowProps, MosaicWindowToolbarProps } from './entities/window';
 
 // Features
 export { Split } from './features/resize';
@@ -20,6 +20,9 @@ export type { SplitProps } from './features/resize';
 
 export { MosaicDropTarget } from './features/drag-drop';
 export type { MosaicDropTargetProps } from './features/drag-drop';
+
+export { MosaicLayout, useMosaicPanels } from './features/panel-manager';
+export type { MosaicLayoutProps } from './features/panel-manager';
 
 // Types
 export type {
@@ -42,6 +45,7 @@ export type {
   MosaicWindowContextValue,
   MosaicDragItem,
   MosaicDropData,
+  MosaicPanelConfig,
 } from './shared/types';
 
 export { MosaicDropTargetPosition, Corner } from './shared/types';
@@ -73,7 +77,12 @@ export {
 } from './shared/lib';
 
 // Context
-export { MosaicContext, MosaicWindowContext } from './shared/lib/context';
+export {
+  MosaicContext,
+  MosaicWindowContext,
+  useMosaicContext,
+  useMosaicWindowContext,
+} from './shared/lib/context';
 
 // Styles
 import './styles/index.css';

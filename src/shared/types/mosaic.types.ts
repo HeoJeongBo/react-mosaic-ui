@@ -107,6 +107,18 @@ export type TileRenderer<T extends MosaicKey = string> = (id: T, path: MosaicPat
 export type CreateNode<T extends MosaicKey = string> = () => T | Promise<T>;
 
 /**
+ * High-level panel configuration for use with MosaicLayout and useMosaicPanels.
+ * Decouples panel metadata from the underlying tree structure.
+ */
+export interface MosaicPanelConfig<TId extends MosaicKey = string> {
+  id: TId;
+  title: string;
+  content: import('react').ReactNode;
+  renderToolbar?: () => import('react').ReactNode;
+  Wrapper?: import('react').ComponentType<{ children: import('react').ReactNode }>;
+}
+
+/**
  * Drag bindings exposed via MosaicWindowToolbarProps.dragHandle.
  * Attach dragHandle.ref to the element that should initiate dragging.
  *

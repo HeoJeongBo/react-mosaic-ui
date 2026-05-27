@@ -164,8 +164,8 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
         const root = currentValueRef.current;
         if (root === null) return;
 
-        // resize tick(suppressOnRelease=true)이고 splitPercentage 단일 업데이트면
-        // shallow 헬퍼로 처리 → immer 없이 형제 subtree 참조 유지
+        // resize tick (suppressOnRelease=true) with a single splitPercentage update:
+        // use the shallow helper → preserves sibling subtree references without immer
         const u = updates[0];
         const uSpec = u !== undefined && !('$set' in u.spec) ? u.spec : undefined;
         const isSplitPercentageTick =

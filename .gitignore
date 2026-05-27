@@ -20,6 +20,7 @@ build/
 # IDE
 .vscode/
 .idea/
+.claude/settings.json
 *.swp
 *.swo
 *~
@@ -42,6 +43,7 @@ coverage/
 .env
 .env.local
 .env.*.local
+.npmrc
 
 # Temporary files
 .cache/
@@ -52,5 +54,3 @@ temp/
 # Example
 example/node_modules/
 example/dist/
-
-.npmrc

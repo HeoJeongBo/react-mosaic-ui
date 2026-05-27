@@ -350,9 +350,9 @@ export const createSplitUpdate = <T extends MosaicKey>(
 };
 
 /**
- * resize tick 전용: splitPercentage 하나만 교체하는 O(depth) shallow update.
- * immer produce 없이 path 위의 노드만 새 spread 참조로 교체한다.
- * 형제 subtree는 기존 참조를 그대로 유지 → MosaicNodeRenderer memo 통과.
+ * For resize ticks only: O(depth) shallow update that replaces only one splitPercentage.
+ * Replaces only nodes along the path with new spread references, without immer produce.
+ * Sibling subtrees retain their existing references → passes MosaicNodeRenderer memo.
  */
 export const updateSplitPercentage = <T extends MosaicKey>(
   root: MosaicNode<T>,

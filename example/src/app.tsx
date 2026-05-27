@@ -1,158 +1,164 @@
 import {
   Mosaic,
+  MosaicLayout,
   type MosaicNode,
   type MosaicPath,
   MosaicWindow,
   createBalancedTreeFromLeaves,
   getLeaves,
+  useMosaicPanels,
 } from '@heojeongbo/react-mosaic-ui';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
-type ViewId = 'a' | 'b' | 'c' | 'd' | 'new';
+// ---------------------------------------------------------------------------
+// Tab button
+// ---------------------------------------------------------------------------
 
-const TITLE_MAP: Record<ViewId, string> = {
-  a: 'Window A',
-  b: 'Window B',
-  c: 'Window C',
-  d: 'Window D',
-  new: 'New Window',
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`demo-tab${active ? ' active' : ''}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// High-level API demo — useMosaicPanels + MosaicLayout
+// ---------------------------------------------------------------------------
+
+function PanelContent({ title, index }: { title: string; index: number }) {
+  return (
+    <div className="panel-content">
+      <div className="panel-index">#{index}</div>
+      <p className="panel-title">{title}</p>
+    </div>
+  );
+}
+
+function HighLevelDemo() {
+  const { panels, addPanel, removePanel, clearPanels } = useMosaicPanels();
+  const counterRef = useRef(0);
+
+  const handleAdd = () => {
+    counterRef.current += 1;
+    const n = counterRef.current;
+    const id = `panel-${n}`;
+    addPanel({
+      id,
+      title: `Panel ${n}`,
+      content: <PanelContent title={`Panel ${n}`} index={n} />,
+      renderToolbar: () => (
+        <div className="demo-window-toolbar">
+          <span>Panel {n}</span>
+          <button type="button" onClick={() => removePanel(id)}>
+            Remove
+          </button>
+        </div>
+      ),
+    });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '0.75rem' }}>
+      <div className="demo-controls">
+        <button type="button" onClick={handleAdd} className="demo-btn demo-btn-primary">
+          + Add Panel
+        </button>
+        <button
+          type="button"
+          onClick={clearPanels}
+          disabled={panels.length === 0}
+          className="demo-btn demo-btn-danger"
+        >
+          Clear All
+        </button>
+        <span className="demo-stat">
+          panels.length = <span>{panels.length}</span>
+        </span>
+      </div>
+
+      <div className="demo-mosaic-area">
+        <MosaicLayout
+          panels={panels}
+          zeroStateView={
+            <div className="demo-zero-state">
+              <p>Click the + Add Panel button to add panels</p>
+            </div>
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Low-level API demo — Mosaic + MosaicWindow (manual approach)
+// ---------------------------------------------------------------------------
+
+type LowLevelViewId = 'a' | 'b' | 'c' | 'd' | 'new';
+
+const LOW_LEVEL_TITLE: Record<LowLevelViewId, string> = {
+  a: 'Window A', b: 'Window B', c: 'Window C', d: 'Window D', new: 'New Window',
 };
 
-const CONTENT_MAP: Record<ViewId, string> = {
-  a: 'This is the content of Window A. You can drag the title bar to move this window.',
-  b: 'This is Window B. Try resizing by dragging the split bars between windows.',
-  c: 'Window C here. Click the split button (⊞) to divide this window.',
-  d: 'Window D content. Use the expand button (⛶) to make this window larger.',
-  new: 'A newly created window. You can close it with the × button.',
-};
-
-let windowCount = 0;
-
-export const DemoApp = () => {
-  const [currentNode, setCurrentNode] = useState<MosaicNode<ViewId> | null>({
+function LowLevelDemo() {
+  const [currentNode, setCurrentNode] = useState<MosaicNode<LowLevelViewId> | null>({
     direction: 'column',
     splitPercentage: 50,
-    first: {
-      direction: 'row',
-      splitPercentage: 50,
-      first: 'a',
-      second: 'b',
-    },
-    second: {
-      direction: 'row',
-      splitPercentage: 50,
-      first: 'c',
-      second: 'd',
-    },
+    first: { direction: 'row', splitPercentage: 50, first: 'a', second: 'b' },
+    second: { direction: 'row', splitPercentage: 50, first: 'c', second: 'd' },
   });
 
-  const createNode = useCallback((): ViewId => {
-    windowCount++;
-    return 'new';
-  }, []);
+  const createNode = useCallback((): LowLevelViewId => 'new', []);
 
   const autoArrange = useCallback(() => {
     setCurrentNode((node) => {
       if (!node) return node;
-      const leaves = getLeaves(node);
-      return createBalancedTreeFromLeaves(leaves);
+      return createBalancedTreeFromLeaves(getLeaves(node));
     });
   }, []);
 
   const addWindow = useCallback(() => {
     setCurrentNode((node) => {
-      const newId = createNode();
-      if (!node) return newId;
-      // Wrap existing tree in a single new parent — preserves all existing node
-      // references so MosaicNodeRenderer memo passes and existing panels skip re-render.
-      return {
-        direction: 'row' as const,
-        first: node,
-        second: newId,
-        splitPercentage: 50,
-      };
+      if (!node) return 'new';
+      return { direction: 'row' as const, first: node, second: 'new', splitPercentage: 50 };
     });
-  }, [createNode]);
+  }, []);
 
   const renderTile = useCallback(
-    (id: ViewId, path: MosaicPath) => (
+    (id: LowLevelViewId, path: MosaicPath) => (
       <MosaicWindow
         path={path}
-        title={TITLE_MAP[id]}
+        title={LOW_LEVEL_TITLE[id]}
         createNode={createNode}
-        className="rm-h-full"
-        onDragStart={() => console.log('Drag Start : ', id, path)}
-        onDragEnd={(type) => console.log('Drag End L ', id, type)}
         additionalControls={
-          <div className="rm-flex rm-flex-col rm-gap-2">
+          <div className="window-extra-controls">
             <button
               type="button"
-              className="rm-px-3 rm-py-1 rm-text-xs rm-bg-blue-500 rm-text-white rm-rounded hover:rm-bg-blue-600"
-              onClick={() => alert(`Custom action for ${TITLE_MAP[id]}`)}
+              className="demo-btn-sm"
+              onClick={() => alert(`Custom action for ${LOW_LEVEL_TITLE[id]}`)}
             >
               Custom Action
-            </button>
-            <button
-              type="button"
-              className="rm-px-3 rm-py-1 rm-text-xs rm-bg-green-500 rm-text-white rm-rounded hover:rm-bg-green-600"
-              onClick={() => console.log('Window info:', { id, path })}
-            >
-              Log Info
             </button>
           </div>
         }
       >
-        <div className="rm-flex rm-flex-col rm-h-full">
-          <div className="rm-flex-1 rm-flex rm-flex-col rm-items-center rm-justify-center rm-space-y-4">
-            <div className="rm-text-center">
-              <h2 className="rm-text-3xl rm-font-bold rm-mb-2 rm-text-gray-800">{TITLE_MAP[id]}</h2>
-              <div className="rm-inline-block rm-bg-gray-100 rm-px-3 rm-py-1 rm-rounded-full rm-mb-4">
-                <code className="rm-text-xs rm-text-gray-600">ID: {id}</code>
-              </div>
-            </div>
-
-            <div className="rm-max-w-md rm-text-center">
-              <p className="rm-text-gray-600 rm-leading-relaxed">{CONTENT_MAP[id]}</p>
-            </div>
-
-            <div className="rm-bg-blue-50 rm-border rm-border-blue-200 rm-rounded-lg rm-p-4 rm-max-w-md">
-              <p className="rm-text-sm rm-font-semibold rm-text-blue-800 rm-mb-2">
-                📍 Current Path:
-              </p>
-              <code className="rm-text-xs rm-text-blue-600 rm-bg-white rm-px-2 rm-py-1 rm-rounded">
-                {path.length > 0 ? path.join(' → ') : 'root'}
-              </code>
-            </div>
-
-            <div className="rm-grid rm-grid-cols-2 rm-gap-3 rm-max-w-md rm-w-full">
-              <div className="rm-bg-purple-50 rm-border rm-border-purple-200 rm-rounded rm-p-3 rm-text-center">
-                <div className="rm-text-2xl rm-mb-1">↻</div>
-                <div className="rm-text-xs rm-text-purple-800 rm-font-medium">Replace</div>
-                <div className="rm-text-xs rm-text-purple-600 rm-mt-1">Replace window</div>
-              </div>
-              <div className="rm-bg-green-50 rm-border rm-border-green-200 rm-rounded rm-p-3 rm-text-center">
-                <div className="rm-text-2xl rm-mb-1">⊞</div>
-                <div className="rm-text-xs rm-text-green-800 rm-font-medium">Split</div>
-                <div className="rm-text-xs rm-text-green-600 rm-mt-1">Divide window</div>
-              </div>
-              <div className="rm-bg-orange-50 rm-border rm-border-orange-200 rm-rounded rm-p-3 rm-text-center">
-                <div className="rm-text-2xl rm-mb-1">⛶</div>
-                <div className="rm-text-xs rm-text-orange-800 rm-font-medium">Expand</div>
-                <div className="rm-text-xs rm-text-orange-600 rm-mt-1">Maximize window</div>
-              </div>
-              <div className="rm-bg-red-50 rm-border rm-border-red-200 rm-rounded rm-p-3 rm-text-center">
-                <div className="rm-text-2xl rm-mb-1">✕</div>
-                <div className="rm-text-xs rm-text-red-800 rm-font-medium">Close</div>
-                <div className="rm-text-xs rm-text-red-600 rm-mt-1">Remove window</div>
-              </div>
-              <div className="rm-bg-indigo-50 rm-border rm-border-indigo-200 rm-rounded rm-p-3 rm-text-center rm-col-span-2">
-                <div className="rm-text-2xl rm-mb-1">⋯</div>
-                <div className="rm-text-xs rm-text-indigo-800 rm-font-medium">More</div>
-                <div className="rm-text-xs rm-text-indigo-600 rm-mt-1">
-                  Additional controls drawer
-                </div>
-              </div>
-            </div>
+        <div className="window-content">
+          <h2>{LOW_LEVEL_TITLE[id]}</h2>
+          <div className="window-path">
+            path: {path.length > 0 ? path.join(' → ') : 'root'}
           </div>
         </div>
       </MosaicWindow>
@@ -161,61 +167,82 @@ export const DemoApp = () => {
   );
 
   return (
-    <div className="rm-w-screen rm-h-screen rm-flex rm-flex-col rm-bg-gray-900 flex-col h-full">
-      <div className="rm-bg-gray-800 rm-text-white rm-p-4 rm-flex rm-items-center rm-justify-between rm-shadow-lg">
-        <div>
-          <h1 className="rm-text-2xl rm-font-bold">React Mosaic UI Example</h1>
-          <p className="rm-text-sm rm-text-gray-400 rm-mt-1">
-            A modern tiling window manager for React
-          </p>
-        </div>
-        <div className="rm-flex rm-gap-2">
-          <button
-            type="button"
-            onClick={addWindow}
-            className="rm-px-4 rm-py-2 rm-bg-blue-600 rm-text-white rm-rounded rm-font-medium hover:rm-bg-blue-700 rm-transition rm-shadow"
-          >
-            ➕ Add Window
-          </button>
-          <button
-            type="button"
-            onClick={autoArrange}
-            className="rm-px-4 rm-py-2 rm-bg-green-600 rm-text-white rm-rounded rm-font-medium hover:rm-bg-green-700 rm-transition rm-shadow"
-            disabled={!currentNode}
-          >
-            🔄 Auto Arrange
-          </button>
-          <button
-            type="button"
-            onClick={() => setCurrentNode(null)}
-            className="rm-px-4 rm-py-2 rm-bg-red-600 rm-text-white rm-rounded rm-font-medium hover:rm-bg-red-700 rm-transition rm-shadow"
-          >
-            🗑️ Clear All
-          </button>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '0.75rem' }}>
+      <div className="demo-controls">
+        <button type="button" onClick={addWindow} className="demo-btn demo-btn-primary">
+          ➕ Add Window
+        </button>
+        <button
+          type="button"
+          onClick={autoArrange}
+          disabled={!currentNode}
+          className="demo-btn demo-btn-success"
+        >
+          🔄 Auto Arrange
+        </button>
+        <button
+          type="button"
+          onClick={() => setCurrentNode(null)}
+          className="demo-btn demo-btn-danger"
+        >
+          🗑️ Clear All
+        </button>
       </div>
 
-      <div className="rm-flex-1 rm-p-4 rm-bg-gray-900 h-full rm-relative">
-        <Mosaic<ViewId>
+      <div className="demo-code-hint">
+        <span className="demo-code-keyword">const</span>{' '}
+        {'[currentNode, setCurrentNode] = '}
+        <span className="demo-code-fn">useState</span>
+        {'<MosaicNode<ViewId> | null>(initialTree)'}
+        <br />
+        <span className="demo-code-comment">{'// manage tree directly — wire renderTile and onChange manually'}</span>
+      </div>
+
+      <div className="demo-mosaic-area">
+        <Mosaic<LowLevelViewId>
           renderTile={renderTile}
           value={currentNode}
           onChange={setCurrentNode}
-          className="rm-h-full rm-rounded-lg rm-overflow-hidden rm-shadow-2xl"
           zeroStateView={
-            <div className="rm-flex rm-flex-col rm-items-center rm-justify-center rm-h-full rm-bg-gradient-to-br rm-from-gray-50 rm-to-gray-100">
-              <div className="rm-text-6xl rm-mb-4">📭</div>
-              <h3 className="rm-text-2xl rm-font-bold rm-text-gray-700 rm-mb-2">No Windows</h3>
-              <p className="rm-text-gray-500 rm-mb-6">Click "Add Window" to get started</p>
-              <button
-                type="button"
-                onClick={addWindow}
-                className="rm-px-6 rm-py-3 rm-bg-blue-600 rm-text-white rm-rounded-lg rm-font-medium hover:rm-bg-blue-700 rm-transition rm-shadow-lg"
-              >
-                ➕ Add Your First Window
-              </button>
+            <div className="demo-zero-state">
+              <div style={{ fontSize: '3rem' }}>📭</div>
+              <p>Click the Add Window button to get started</p>
             </div>
           }
         />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Root app with tab switcher
+// ---------------------------------------------------------------------------
+
+type Tab = 'high' | 'low';
+
+export const DemoApp = () => {
+  const [activeTab, setActiveTab] = useState<Tab>('high');
+
+  return (
+    <div className="demo-app">
+      <div className="demo-header">
+        <div>
+          <h1>React Mosaic UI</h1>
+          <p>Tiling window manager for React</p>
+        </div>
+        <div className="demo-tabs">
+          <TabButton active={activeTab === 'high'} onClick={() => setActiveTab('high')}>
+            ✨ High-level API
+          </TabButton>
+          <TabButton active={activeTab === 'low'} onClick={() => setActiveTab('low')}>
+            🔧 Low-level API
+          </TabButton>
+        </div>
+      </div>
+
+      <div className="demo-content">
+        {activeTab === 'high' ? <HighLevelDemo /> : <LowLevelDemo />}
       </div>
     </div>
   );

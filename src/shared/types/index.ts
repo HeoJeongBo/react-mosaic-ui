@@ -14,6 +14,7 @@ export type {
   TileRenderer,
   CreateNode,
   DragBindings,
+  MosaicPanelConfig,
 } from './mosaic.types';
 
 export { MosaicDropTargetPosition, Corner } from './mosaic.types';

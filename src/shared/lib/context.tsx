@@ -1,5 +1,6 @@
-import { createContext } from 'react';
+import { createContext, useContext } from 'react';
 import type { MosaicContextValue, MosaicWindowContextValue } from '../types';
+import type { MosaicKey } from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const MosaicContext = createContext<MosaicContextValue<any>>({
@@ -23,3 +24,11 @@ export const MosaicWindowContext = createContext<MosaicWindowContextValue>({
     getPath: () => [],
   },
 });
+
+export function useMosaicContext<T extends MosaicKey = string>(): MosaicContextValue<T> {
+  return useContext(MosaicContext) as MosaicContextValue<T>;
+}
+
+export function useMosaicWindowContext(): MosaicWindowContextValue {
+  return useContext(MosaicWindowContext);
+}

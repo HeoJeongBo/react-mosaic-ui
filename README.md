@@ -117,6 +117,90 @@ const [tree, setTree] = useState<MosaicNode<string> | null>(initialTree);
 <Mosaic initialValue={initialTree} renderTile={renderTile} />
 ```
 
+## High-Level API
+
+For most use cases you don't need to manage the tree manually. `MosaicLayout` + `useMosaicPanels` handles panel state and tree structure automatically.
+
+```tsx
+import { MosaicLayout, useMosaicPanels } from '@heojeongbo/react-mosaic-ui';
+import '@heojeongbo/react-mosaic-ui/styles.css';
+
+function App() {
+  const { panels, addPanel, removePanel } = useMosaicPanels();
+
+  return (
+    <>
+      <button
+        onClick={() =>
+          addPanel({ id: 'a', title: 'Panel A', content: <div>Hello from A</div> })
+        }
+      >
+        Add Panel
+      </button>
+      <div style={{ width: '100vw', height: '100vh' }}>
+        <MosaicLayout panels={panels} />
+      </div>
+    </>
+  );
+}
+```
+
+### `<MosaicLayout>`
+
+Renders a mosaic from a flat array of panel configs. Adding or removing panels surgically updates the tree — existing panel positions are preserved.
+
+**`MosaicPanelConfig<T>`**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `T` | Unique identifier |
+| `title` | `string` | Window toolbar title |
+| `content` | `ReactNode` | Window body |
+| `renderToolbar` | `() => ReactNode` | Optional custom toolbar content |
+| `Wrapper` | `ComponentType<{ children: ReactNode }>` | Optional wrapper around the entire window |
+
+**`MosaicLayout` props**
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `panels` | `MosaicPanelConfig<T>[]` | required — panels to display |
+| `className` | `string` | Extra CSS class |
+| `zeroStateView` | `JSX.Element` | Shown when panels array is empty |
+| `...rest` | — | All other `<Mosaic>` props except `renderTile`, `value`, `onChange`, `initialValue` |
+
+### `useMosaicPanels<T>()`
+
+Hook for managing panel state. Pair with `<MosaicLayout>`.
+
+| Return | Type | Description |
+|--------|------|-------------|
+| `panels` | `MosaicPanelConfig<T>[]` | Current panels array |
+| `addPanel(config)` | `void` | Add panel; no-op if id already exists |
+| `removePanel(id)` | `void` | Remove panel by id |
+| `togglePanel(config)` | `void` | Add if absent, remove if present |
+| `hasPanel(id)` | `boolean` | Check if panel with id exists |
+| `clearPanels()` | `void` | Remove all panels |
+| `updatePanel(id, updates)` | `void` | Patch an existing panel (id is immutable) |
+| `getPanelById(id)` | `MosaicPanelConfig<T> \| null` | Look up a panel by id |
+
+```tsx
+const { panels, addPanel, removePanel, updatePanel, getPanelById } = useMosaicPanels();
+
+// Add
+addPanel({ id: 'logs', title: 'Logs', content: <LogViewer /> });
+
+// Update title without changing id
+updatePanel('logs', { title: 'Application Logs' });
+
+// Look up
+const panel = getPanelById('logs'); // MosaicPanelConfig | null
+
+// Remove
+removePanel('logs');
+```
+
+---
+
 ## API Reference
 
 ### `<Mosaic>`
@@ -206,16 +290,15 @@ setTree(updateTree(tree, [update]));
 
 ### Contexts
 
-For advanced use cases you can read the mosaic state directly from context:
+For advanced use cases you can read the mosaic state from context using the typed convenience hooks:
 
 ```tsx
-import { MosaicContext, MosaicWindowContext } from '@heojeongbo/react-mosaic-ui';
-import { useContext } from 'react';
+import { useMosaicContext, useMosaicWindowContext } from '@heojeongbo/react-mosaic-ui';
 
 // Inside a tile rendered by renderTile:
 function MyTile() {
-  const { mosaicActions, mosaicId } = useContext(MosaicContext);
-  const { mosaicWindowActions } = useContext(MosaicWindowContext);
+  const { mosaicActions, mosaicId } = useMosaicContext();
+  const { mosaicWindowActions } = useMosaicWindowContext();
 
   return (
     <button onClick={() => mosaicActions.remove(mosaicWindowActions.getPath())}>
@@ -225,7 +308,15 @@ function MyTile() {
 }
 ```
 
-**`MosaicRootActions`** (via `MosaicContext.mosaicActions`):
+`useMosaicContext<T>()` accepts an optional generic type parameter to type `mosaicActions` when your tile key is not `string`:
+
+```tsx
+const { mosaicActions } = useMosaicContext<number>();
+```
+
+> If you prefer, you can access the raw contexts directly: `useContext(MosaicContext)` / `useContext(MosaicWindowContext)`.
+
+**`MosaicRootActions`** (via `useMosaicContext().mosaicActions`):
 
 | Method | Description |
 |--------|-------------|
@@ -235,8 +326,9 @@ function MyTile() {
 | `replaceWith(path, node)` | Replace node at path |
 | `updateTree(updates, suppressOnRelease?)` | Apply multiple updates atomically |
 | `getRoot()` | Get current root node |
+| `add(node, position?)` | Add a new node to the layout |
 
-**`MosaicWindowActions`** (via `MosaicWindowContext.mosaicWindowActions`):
+**`MosaicWindowActions`** (via `useMosaicWindowContext().mosaicWindowActions`):
 
 | Method | Description |
 |--------|-------------|
@@ -281,6 +373,28 @@ All internal class names use the `rm-` prefix and are scoped under `.react-mosai
       <div className="actions">{defaultToolbar}</div>
     </div>
   )}
+>
+  <div>Content</div>
+</MosaicWindow>
+```
+
+When extracting the toolbar into a separate component, use the exported `MosaicWindowToolbarProps` type:
+
+```tsx
+import type { MosaicWindowToolbarProps } from '@heojeongbo/react-mosaic-ui';
+
+function MyToolbar({ title, dragHandle }: MosaicWindowToolbarProps<string>) {
+  return (
+    <div ref={dragHandle.ref} style={{ display: 'flex', alignItems: 'center', padding: '0 8px' }}>
+      <span>{title}</span>
+    </div>
+  );
+}
+
+<MosaicWindow
+  title="My Window"
+  path={path}
+  renderToolbar={(props) => <MyToolbar {...props} />}
 >
   <div>Content</div>
 </MosaicWindow>
@@ -371,7 +485,7 @@ bun install
 # Build library
 bun run build
 
-# Run tests (200 tests)
+# Run tests (306 tests)
 bun run test
 
 # Type check
