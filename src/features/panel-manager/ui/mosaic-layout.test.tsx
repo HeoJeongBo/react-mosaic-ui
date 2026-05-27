@@ -184,6 +184,55 @@ describe('MosaicLayout', () => {
     });
   });
 
+  describe('initialNode prop', () => {
+    it('uses initialNode as the starting tree when provided', () => {
+      let capturedNode: MosaicNode<string> | null = null;
+      const ContextCapture = () => {
+        const ctx = useContext(MosaicContext) as MosaicContextValue<string>;
+        capturedNode = ctx.mosaicActions.getRoot();
+        return null;
+      };
+      const customNode: MosaicNode<string> = {
+        direction: 'column',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 30,
+      };
+      render(
+        <MosaicLayout
+          panels={[makePanel('a', { content: <ContextCapture /> }), makePanel('b')]}
+          initialNode={customNode}
+        />,
+      );
+      expect(capturedNode).toEqual(customNode);
+    });
+
+    it('falls back to balanced tree when initialNode is not provided', () => {
+      let capturedNode: MosaicNode<string> | null = null;
+      const ContextCapture = () => {
+        const ctx = useContext(MosaicContext) as MosaicContextValue<string>;
+        capturedNode = ctx.mosaicActions.getRoot();
+        return null;
+      };
+      render(
+        <MosaicLayout panels={[makePanel('a', { content: <ContextCapture /> }), makePanel('b')]} />,
+      );
+      expect(capturedNode).not.toBeNull();
+      expect(typeof capturedNode).toBe('object');
+    });
+
+    it('starts with null (zeroState) when initialNode={null} is provided', () => {
+      render(
+        <MosaicLayout
+          panels={[makePanel('a'), makePanel('b')]}
+          initialNode={null}
+          zeroStateView={<div data-testid="zero">empty</div>}
+        />,
+      );
+      expect(screen.getByTestId('zero')).toBeInTheDocument();
+    });
+  });
+
   it('onChange: currentNode updates when mosaicActions.updateTree is called', () => {
     let capturedCtx: MosaicContextValue<string> | null = null;
 

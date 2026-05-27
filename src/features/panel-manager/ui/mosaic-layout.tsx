@@ -33,15 +33,17 @@ export interface MosaicLayoutProps<TId extends MosaicKey = string>
   extends Omit<MosaicProps<TId>, 'renderTile' | 'value' | 'onChange' | 'initialValue'> {
   panels: MosaicPanelConfig<TId>[];
   className?: string;
+  initialNode?: MosaicNode<TId> | null;
 }
 
 export function MosaicLayout<TId extends MosaicKey = string>({
   panels,
   className,
+  initialNode,
   ...mosaicProps
 }: MosaicLayoutProps<TId>) {
   const [currentNode, setCurrentNode] = useState<MosaicNode<TId> | null>(() =>
-    createBalancedTreeFromLeaves(panels.map((p) => p.id)),
+    initialNode !== undefined ? initialNode : createBalancedTreeFromLeaves(panels.map((p) => p.id)),
   );
 
   const prevIdsRef = useRef<Set<TId>>(new Set(panels.map((p) => p.id)));
