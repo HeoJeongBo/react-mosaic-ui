@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.3](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.3.2...v2.3.3) (2026-05-27)
+
+### Bug Fixes
+
+* reredner issue ([6184cda](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/6184cda09f964445d042b7259214cf450bcd270d))
+
 ## [2.3.2](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.3.1...v2.3.2) (2026-05-27)
 
 ### Features
