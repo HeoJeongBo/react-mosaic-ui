@@ -51,7 +51,19 @@ export default [
   {
     input: 'dist/types/index.d.ts',
     output: [{ file: 'dist/index.d.ts', format: 'es' }],
-    plugins: [dts()],
+    plugins: [
+      dts({
+        compilerOptions: {
+          paths: {
+            '@/*': ['./dist/types/*'],
+            '@/shared/*': ['./dist/types/shared/*'],
+            '@/entities/*': ['./dist/types/entities/*'],
+            '@/features/*': ['./dist/types/features/*'],
+            '@/widgets/*': ['./dist/types/widgets/*'],
+          },
+        },
+      }),
+    ],
     external: [/\.css$/],
   },
 ];

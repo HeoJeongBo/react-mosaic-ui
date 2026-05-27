@@ -52,3 +52,5 @@ temp/
 # Example
 example/node_modules/
 example/dist/
+
+.npmrc

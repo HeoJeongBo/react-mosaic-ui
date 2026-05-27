@@ -49,6 +49,7 @@ const applyUpdateAtPath = <T extends MosaicKey>(
   spec: MosaicUpdateSpec<T>,
 ): void => {
   if (path.length === 0) {
+    /* v8 ignore next 4 -- root-level $set is handled before applyUpdateAtPath is called */
     if ('$set' in spec) {
       // This case is handled at the parent level
       return;
@@ -75,6 +76,7 @@ const applyUpdateAtPath = <T extends MosaicKey>(
   }
 
   const [branch, ...rest] = path;
+  /* v8 ignore next 1 -- branch is always 'first' | 'second' at this point */
   if (!branch) return;
 
   if (rest.length === 0 && '$set' in spec) {
@@ -100,6 +102,7 @@ export const createRemoveUpdate = <T extends MosaicKey>(
   const siblingBranch = getOtherBranch(branch);
 
   const parent = getAndAssertNodeAtPathExists(root, parentPath);
+  /* v8 ignore next 3 -- tree invariant: the parent of a valid leaf path is always a parent node */
   if (!isParent(parent)) {
     throw new Error('Parent is not a parent node');
   }
@@ -222,6 +225,7 @@ export const createDragToUpdates = <T extends MosaicKey>(
       createRemoveUpdate(destinationNode, relativeSourcePath),
     ]);
 
+    /* v8 ignore next 3 -- removing a child from a two-leaf parent always yields the sibling, never null */
     if (updatedDestination === null) {
       return [];
     }

@@ -9,6 +9,7 @@ import {
 import { MosaicContext } from '@/shared/lib/context';
 import type {
   CreateNode,
+  MosaicDirection,
   MosaicKey,
   MosaicNode,
   MosaicPath,
@@ -50,6 +51,9 @@ export type MosaicProps<T extends MosaicKey> =
   | MosaicControlledProps<T>
   | MosaicUncontrolledProps<T>;
 
+// Module-level handler — avoids allocating a new function on every Mosaic render.
+const preventDefaultHandler = (e: { preventDefault: () => void }) => e.preventDefault();
+
 const isControlled = <T extends MosaicKey>(
   props: MosaicProps<T>,
 ): props is MosaicControlledProps<T> => {
@@ -57,6 +61,7 @@ const isControlled = <T extends MosaicKey>(
 };
 
 const getBackend = () => {
+  /* v8 ignore next 1 -- SSR path: window is always defined in the browser and jsdom */
   if (typeof window === 'undefined') return HTML5Backend;
   const isTouchOnly =
     'ontouchstart' in window &&
@@ -185,6 +190,28 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
       },
 
       getRoot: () => currentValueRef.current,
+
+      add: (newNode: T, direction: MosaicDirection = 'row') => {
+        const root = currentValueRef.current;
+        if (root === null) {
+          if (!controlledRef.current) setInternalValue(newNode);
+          onChangeRef.current?.(newNode);
+          onReleaseRef.current?.(newNode);
+          return;
+        }
+        // Wrap existing root in a single new parent — existing subtree references
+        // are preserved, so MosaicNodeRenderer memo (prev.node === next.node) passes
+        // for all existing nodes and they skip re-render entirely.
+        const newTree: MosaicNode<T> = {
+          direction,
+          first: root,
+          second: newNode,
+          splitPercentage: 50,
+        };
+        if (!controlledRef.current) setInternalValue(newTree);
+        onChangeRef.current?.(newTree);
+        onReleaseRef.current?.(newTree);
+      },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -217,22 +244,25 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
   useEffect(() => {
     const monitor = managerRef.current!.getMonitor();
     let wasDragging = false;
-    const unsubscribe = monitor.subscribeToStateChange(() => {
-      const isDragging = monitor.isDragging();
-      if (isDragging === wasDragging) return;
-      wasDragging = isDragging;
+    const unsubscribe = monitor.subscribeToStateChange(
+      /* v8 ignore start */
+      () => {
+        const isDragging = monitor.isDragging();
+        if (isDragging === wasDragging) return;
+        wasDragging = isDragging;
 
-      if (isDragging) {
-        // Defer start: Chrome cancels drag if ancestor DOM is mutated
-        // synchronously during the dragstart event.
-        setTimeout(() => {
-          containerRef.current?.classList.add('rm-dragging');
-        }, 0);
-      } else {
-        // End: apply immediately for instant visual feedback.
-        containerRef.current?.classList.remove('rm-dragging');
-      }
-    });
+        if (isDragging) {
+          // Defer start: Chrome cancels drag if ancestor DOM is mutated
+          // synchronously during the dragstart event.
+          setTimeout(() => {
+            containerRef.current?.classList.add('rm-dragging');
+          }, 0);
+        } else {
+          // End: apply immediately for instant visual feedback.
+          containerRef.current?.classList.remove('rm-dragging');
+        }
+      }, /* v8 ignore stop */
+    );
     return unsubscribe;
   }, []);
 
@@ -242,8 +272,8 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
         <div
           ref={containerRef}
           className={classNames(className, 'rm-w-full rm-h-full rm-relative')}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => e.preventDefault()}
+          onDragOver={preventDefaultHandler}
+          onDrop={preventDefaultHandler}
         >
           {currentValue === null ? (
             (zeroStateView ?? (

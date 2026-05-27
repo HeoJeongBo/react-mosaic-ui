@@ -1,6 +1,11 @@
 import { MosaicContext } from '@/shared/lib/context';
+import type { MosaicPath } from '@/shared/types';
 import { MosaicDropTargetPosition } from '@/shared/types';
 import React, { useContext } from 'react';
+
+// Stable empty-array reference shared across all root drop targets.
+// Avoids allocating a new [] on every render, preserving MosaicDropTarget memo.
+const ROOT_PATH: MosaicPath = [];
 import { MosaicDropTarget } from './mosaic-drop-target';
 
 /**
@@ -19,14 +24,14 @@ const RootDropTargetsImpl = () => {
         className="rm-root-drop-targets rm-absolute"
         style={{ inset: 0, zIndex: 990, pointerEvents: 'none' }}
       >
-        <MosaicDropTarget position={MosaicDropTargetPosition.TOP} path={[]} mosaicId={mosaicId} />
+        <MosaicDropTarget position={MosaicDropTargetPosition.TOP} path={ROOT_PATH} mosaicId={mosaicId} />
         <MosaicDropTarget
           position={MosaicDropTargetPosition.BOTTOM}
-          path={[]}
+          path={ROOT_PATH}
           mosaicId={mosaicId}
         />
-        <MosaicDropTarget position={MosaicDropTargetPosition.LEFT} path={[]} mosaicId={mosaicId} />
-        <MosaicDropTarget position={MosaicDropTargetPosition.RIGHT} path={[]} mosaicId={mosaicId} />
+        <MosaicDropTarget position={MosaicDropTargetPosition.LEFT} path={ROOT_PATH} mosaicId={mosaicId} />
+        <MosaicDropTarget position={MosaicDropTargetPosition.RIGHT} path={ROOT_PATH} mosaicId={mosaicId} />
       </div>
       <div
         className="rm-viewport-edge-drop-targets"
@@ -34,25 +39,25 @@ const RootDropTargetsImpl = () => {
       >
         <MosaicDropTarget
           position={MosaicDropTargetPosition.TOP}
-          path={[]}
+          path={ROOT_PATH}
           mosaicId={mosaicId}
           hitArea="viewport-edge"
         />
         <MosaicDropTarget
           position={MosaicDropTargetPosition.BOTTOM}
-          path={[]}
+          path={ROOT_PATH}
           mosaicId={mosaicId}
           hitArea="viewport-edge"
         />
         <MosaicDropTarget
           position={MosaicDropTargetPosition.LEFT}
-          path={[]}
+          path={ROOT_PATH}
           mosaicId={mosaicId}
           hitArea="viewport-edge"
         />
         <MosaicDropTarget
           position={MosaicDropTargetPosition.RIGHT}
-          path={[]}
+          path={ROOT_PATH}
           mosaicId={mosaicId}
           hitArea="viewport-edge"
         />

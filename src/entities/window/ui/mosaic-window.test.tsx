@@ -26,6 +26,7 @@ const mockMosaicActions = {
   replaceWith: vi.fn(),
   updateTree: vi.fn(),
   getRoot: vi.fn(() => 'a' as MosaicNode<string> | null),
+  add: vi.fn(),
 };
 
 function renderWindow(props: Partial<React.ComponentProps<typeof MosaicWindow<string>>> = {}) {
@@ -154,6 +155,37 @@ describe('MosaicWindow', () => {
       });
       consoleSpy.mockRestore();
     });
+
+    it('Split does nothing when getRoot returns null after createNode succeeds', async () => {
+      const createNode = vi.fn(() => 'new-node');
+      mockMosaicActions.getRoot.mockReturnValueOnce(null);
+      renderWindow({ path: ['first'], createNode });
+      fireEvent.click(screen.getByTitle('Split'));
+      await vi.waitFor(() => {
+        expect(createNode).toHaveBeenCalled();
+      });
+      expect(mockMosaicActions.replaceWith).not.toHaveBeenCalled();
+    });
+
+    it('Split does nothing when getNodeAtPath returns null for the window path', async () => {
+      // createNode succeeds, getRoot returns a tree, but path ['first'] node is null
+      // (e.g. path points to non-existent branch in the tree)
+      const createNode = vi.fn(() => 'new-node');
+      mockMosaicActions.getRoot.mockReturnValueOnce({
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      });
+      // path ['second', 'first'] does not exist in the above tree → getNodeAtPath returns null
+      renderWindow({ path: ['second', 'first'], createNode });
+      fireEvent.click(screen.getByTitle('Split'));
+      await vi.waitFor(() => {
+        // createNode was called but replaceWith was NOT (because currentNodeAtPath is null)
+        expect(createNode).toHaveBeenCalled();
+      });
+      expect(mockMosaicActions.replaceWith).not.toHaveBeenCalled();
+    });
   });
 
   describe('additionalControls drawer', () => {
@@ -275,6 +307,67 @@ describe('MosaicWindow', () => {
       expect(screen.getByText('Title B')).toBeInTheDocument();
     });
 
+    it('re-renders when a new prop key is added (next has key prev does not)', () => {
+      let renderCount = 0;
+      const CountingImpl = (props: React.ComponentProps<typeof MosaicWindow<string>>) => {
+        renderCount++;
+        return <MosaicWindow {...props}><div>child</div></MosaicWindow>;
+      };
+      const Counting = React.memo(CountingImpl);
+
+      const { rerender } = render(
+        <MosaicContext.Provider
+          value={{ mosaicActions: mockMosaicActions, mosaicId: 'test', renderTile: () => <></> }}
+        >
+          <Counting title="Test" path={['first']} />
+        </MosaicContext.Provider>,
+      );
+
+      const before = renderCount;
+
+      // Add createNode prop that was not present before — next has key that prev doesn't
+      rerender(
+        <MosaicContext.Provider
+          value={{ mosaicActions: mockMosaicActions, mosaicId: 'test', renderTile: () => <></> }}
+        >
+          <Counting title="Test" path={['first']} createNode={() => 'new'} />
+        </MosaicContext.Provider>,
+      );
+
+      expect(renderCount).toBeGreaterThan(before);
+    });
+
+    it('toolbar re-renders when createNode added (new key in next not in prev)', () => {
+      // MosaicWindowToolbar memo has a "for key of Object.keys(next)" loop that returns false
+      // when next has a key that prev does not have. This covers that branch.
+      const { rerender } = render(
+        <MosaicContext.Provider
+          value={{ mosaicActions: mockMosaicActions, mosaicId: 'test', renderTile: () => <></> }}
+        >
+          <MosaicWindow title="Test" path={['first']}>
+            <div>child</div>
+          </MosaicWindow>
+        </MosaicContext.Provider>,
+      );
+
+      // Initially no Split button (no createNode)
+      expect(screen.queryByTitle('Split')).not.toBeInTheDocument();
+
+      // Rerender with createNode — toolbar now gets a new prop it didn't have before
+      rerender(
+        <MosaicContext.Provider
+          value={{ mosaicActions: mockMosaicActions, mosaicId: 'test', renderTile: () => <></> }}
+        >
+          <MosaicWindow title="Test" path={['first']} createNode={() => 'new'}>
+            <div>child</div>
+          </MosaicWindow>
+        </MosaicContext.Provider>,
+      );
+
+      // Split button should now appear (toolbar re-rendered with new createNode prop)
+      expect(screen.getByTitle('Split')).toBeInTheDocument();
+    });
+
     it('re-renders when path changes', () => {
       const { rerender } = render(
         <MosaicContext.Provider
@@ -298,6 +391,65 @@ describe('MosaicWindow', () => {
 
       // Close button still renders after path update (no crash)
       expect(screen.getByTitle('Close')).toBeInTheDocument();
+    });
+  });
+
+  describe('useDrag factory callbacks', () => {
+    it('item callback calls onDragStart when provided and returns drag item', async () => {
+      const onDragStart = vi.fn();
+      vi.useFakeTimers();
+
+      renderWindow({ path: ['first'], onDragStart });
+
+      // Capture the factory function passed to useDrag
+      const { useDrag } = vi.mocked(await import('react-dnd'));
+      const factory = useDrag.mock.calls[useDrag.mock.calls.length - 1]?.[0];
+      const spec = typeof factory === 'function' ? factory() : factory;
+
+      // Call the item callback (simulates drag start)
+      const item = spec?.item?.();
+      expect(item).toMatchObject({ path: ['first'] });
+
+      vi.runAllTimers();
+      expect(onDragStart).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('item callback skips onDragStart when not provided', async () => {
+      renderWindow({ path: ['second'] });
+
+      const { useDrag } = vi.mocked(await import('react-dnd'));
+      const factory = useDrag.mock.calls[useDrag.mock.calls.length - 1]?.[0];
+      const spec = typeof factory === 'function' ? factory() : factory;
+
+      // No onDragStart — item() should still return the drag item without error
+      expect(() => spec?.item?.()).not.toThrow();
+    });
+
+    it('end callback calls onDragEnd with "drop" when didDrop is true', async () => {
+      const onDragEnd = vi.fn();
+      renderWindow({ path: ['first'], onDragEnd });
+
+      const { useDrag } = vi.mocked(await import('react-dnd'));
+      const factory = useDrag.mock.calls[useDrag.mock.calls.length - 1]?.[0];
+      const spec = typeof factory === 'function' ? factory() : factory;
+
+      const monitor = { didDrop: () => true };
+      spec?.end?.({} as ReturnType<typeof spec.item>, monitor as Parameters<typeof spec.end>[1]);
+      expect(onDragEnd).toHaveBeenCalledWith('drop');
+    });
+
+    it('end callback calls onDragEnd with "reset" when didDrop is false', async () => {
+      const onDragEnd = vi.fn();
+      renderWindow({ path: ['first'], onDragEnd });
+
+      const { useDrag } = vi.mocked(await import('react-dnd'));
+      const factory = useDrag.mock.calls[useDrag.mock.calls.length - 1]?.[0];
+      const spec = typeof factory === 'function' ? factory() : factory;
+
+      const monitor = { didDrop: () => false };
+      spec?.end?.({} as ReturnType<typeof spec.item>, monitor as Parameters<typeof spec.end>[1]);
+      expect(onDragEnd).toHaveBeenCalledWith('reset');
     });
   });
 

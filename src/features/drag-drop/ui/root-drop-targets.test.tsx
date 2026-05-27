@@ -20,6 +20,7 @@ const mockMosaicActions = {
   replaceWith: vi.fn(),
   updateTree: vi.fn(),
   getRoot: vi.fn(() => null),
+  add: vi.fn(),
 };
 
 function renderRootDropTargets(mosaicId = 'test-mosaic') {

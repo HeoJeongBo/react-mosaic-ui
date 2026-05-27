@@ -10,6 +10,7 @@ export const MosaicContext = createContext<MosaicContextValue<any>>({
     replaceWith: () => {},
     updateTree: () => {},
     getRoot: () => null,
+    add: () => {},
   },
   mosaicId: 'default',
   renderTile: () => null as unknown as JSX.Element,

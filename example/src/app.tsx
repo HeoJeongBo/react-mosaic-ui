@@ -63,9 +63,14 @@ export const DemoApp = () => {
     setCurrentNode((node) => {
       const newId = createNode();
       if (!node) return newId;
-      const leaves = getLeaves(node);
-      const newLeaves = [...leaves, newId];
-      return createBalancedTreeFromLeaves(newLeaves);
+      // Wrap existing tree in a single new parent — preserves all existing node
+      // references so MosaicNodeRenderer memo passes and existing panels skip re-render.
+      return {
+        direction: 'row' as const,
+        first: node,
+        second: newId,
+        splitPercentage: 50,
+      };
     });
   }, [createNode]);
 

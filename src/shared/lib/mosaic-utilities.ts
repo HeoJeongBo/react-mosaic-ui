@@ -54,6 +54,7 @@ export const getNodeAtPath = <T extends MosaicKey>(
   }
 
   const [branch, ...rest] = path;
+  /* v8 ignore next 1 -- branch is always 'first' | 'second' at this point */
   if (!branch) return null;
   return getNodeAtPath(node[branch], rest);
 };
@@ -94,6 +95,7 @@ export const createBalancedTreeFromLeaves = <T extends MosaicKey>(
   );
   const second = createBalancedTreeFromLeaves(leaves.slice(mid), getOtherDirection(startDirection));
 
+  /* v8 ignore next 3 -- mid ≥ 1 guarantees both halves are non-empty; this branch is unreachable */
   if (first === null || second === null) {
     return first ?? second;
   }

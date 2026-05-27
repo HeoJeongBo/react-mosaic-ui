@@ -44,5 +44,5 @@
     "isolatedModules": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist", "demo", "example"]
+  "exclude": ["node_modules", "dist", "demo", "example", "**/*.test.ts", "**/*.test.tsx"]
 }

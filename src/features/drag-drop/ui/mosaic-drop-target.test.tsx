@@ -3,6 +3,7 @@ import type { MosaicNode } from '@/shared/types';
 import { MosaicDropTargetPosition } from '@/shared/types';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import type React from 'react';
+import type { useDrop } from 'react-dnd';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MosaicDropTarget } from './mosaic-drop-target';
 
@@ -34,6 +35,7 @@ const mockMosaicActions = {
   replaceWith: vi.fn(),
   updateTree: vi.fn(),
   getRoot: vi.fn(() => null as MosaicNode<string> | null),
+  add: vi.fn(),
 };
 
 function renderDropTarget(props: Partial<React.ComponentProps<typeof MosaicDropTarget>> = {}) {
@@ -132,6 +134,20 @@ describe('MosaicDropTarget component', () => {
     expect(mockMosaicActions.updateTree).toHaveBeenCalled();
   });
 
+  it('drop does nothing when createDragToUpdates returns empty (source === destination)', () => {
+    const root = { direction: 'row' as const, first: 'a', second: 'b', splitPercentage: 50 };
+    mockMosaicActions.getRoot.mockReturnValue(root);
+    mockMosaicActions.updateTree.mockClear();
+    renderDropTarget({
+      path: ['first'],
+      mosaicId: 'test-mosaic',
+      position: MosaicDropTargetPosition.LEFT,
+    });
+    // source path === destination path → createDragToUpdates returns [] → updateTree not called
+    capturedDropSpec!.drop?.({ mosaicId: 'test-mosaic', path: ['first'] });
+    expect(mockMosaicActions.updateTree).not.toHaveBeenCalled();
+  });
+
   it('drop does nothing when root is null', () => {
     mockMosaicActions.getRoot.mockReturnValue(null);
     mockMosaicActions.updateTree.mockClear();
@@ -174,6 +190,15 @@ describe('CSS hover — no React re-render on drag events', () => {
     expect(el.classList.contains('rm-drop-target--over')).toBe(false);
   });
 
+  it('calls preventDefault on dragOver', () => {
+    const { container } = renderDropTarget();
+    const el = container.querySelector('.rm-mosaic-drop-target') as HTMLElement;
+    // fireEvent.dragOver dispatches a cancelable dragover event;
+    // the handler calls preventDefault which returns false from fireEvent
+    const prevented = !fireEvent.dragOver(el);
+    expect(prevented).toBe(true);
+  });
+
   it('does not trigger React re-render on dragenter/dragleave', () => {
     let renderCount = 0;
     const TrackingWrapper = () => {
@@ -197,6 +222,27 @@ describe('CSS hover — no React re-render on drag events', () => {
     fireEvent.dragLeave(el);
     fireEvent.dragEnter(el);
     expect(renderCount).toBe(before);
+  });
+});
+
+describe('setRef callback', () => {
+  it('passes the DOM element to the drop connector on mount', async () => {
+    // The useDrop mock returns a drop fn; we verify setRef calls it with the element.
+    let capturedDropArg: unknown = undefined;
+    const dropFn = vi.fn((el: unknown) => { capturedDropArg = el; });
+
+    const reactDnd = await import('react-dnd');
+    const useDropMock = vi.mocked(reactDnd.useDrop);
+    useDropMock.mockReturnValueOnce([{}, dropFn] as ReturnType<typeof useDrop>);
+
+    const { container } = renderDropTarget();
+    const el = container.querySelector('.rm-mosaic-drop-target');
+
+    // dropFn should have been called with the actual DOM element (or null on unmount)
+    expect(dropFn).toHaveBeenCalled();
+    if (el) {
+      expect(capturedDropArg).toBe(el);
+    }
   });
 });
 

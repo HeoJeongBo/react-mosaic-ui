@@ -308,6 +308,32 @@ describe('Split', () => {
       expect(onChange).not.toHaveBeenCalled();
     });
 
+    it('handles column direction touch drag', () => {
+      const { container, onChange, onRelease } = renderSplit({ direction: 'column', percentage: 50 });
+      const el = container.firstChild as HTMLElement;
+
+      const parent = document.createElement('div');
+      Object.defineProperty(el, 'parentElement', { get: () => parent, configurable: true });
+      vi.spyOn(parent, 'getBoundingClientRect').mockReturnValue({
+        width: 1000,
+        height: 600,
+        top: 0,
+        left: 0,
+        right: 1000,
+        bottom: 600,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      } as DOMRect);
+
+      fireEvent.touchStart(el, { touches: [{ clientX: 0, clientY: 300 }] });
+      fireEvent.touchMove(document, { touches: [{ clientX: 0, clientY: 360 }] });
+      fireEvent.touchEnd(document);
+
+      expect(onChange).toHaveBeenCalled();
+      expect(onRelease).toHaveBeenCalled();
+    });
+
     it('does nothing on touchstart when parentElement is null', () => {
       const { container, onChange } = renderSplit();
       const el = container.firstChild as HTMLElement;

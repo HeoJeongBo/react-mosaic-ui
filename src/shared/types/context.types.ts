@@ -1,4 +1,4 @@
-import type { MosaicKey, MosaicNode, MosaicPath, MosaicUpdate, TileRenderer } from './mosaic.types';
+import type { MosaicDirection, MosaicKey, MosaicNode, MosaicPath, MosaicUpdate, TileRenderer } from './mosaic.types';
 
 /**
  * Root-level actions available through MosaicContext
@@ -33,6 +33,12 @@ export interface MosaicRootActions<T extends MosaicKey = string> {
    * Get the current root node
    */
   getRoot: () => MosaicNode<T> | null;
+
+  /**
+   * Append a new node by wrapping the existing root in a single new parent.
+   * Preserves all existing subtree references so memoized renderers skip re-render.
+   */
+  add: (newNode: T, direction?: MosaicDirection) => void;
 }
 
 /**
