@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.4](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.3.3...v2.3.4) (2026-05-28)
+
+### Features
+
+* add get direction on next count ([7e97a62](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/7e97a621792a2d8da78eb60192c93e1265d938f4))
+
 ## [2.3.3](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.3.2...v2.3.3) (2026-05-27)
 
 ### Bug Fixes
