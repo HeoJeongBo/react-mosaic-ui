@@ -226,7 +226,7 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
       <div className="rm-mosaic-window-toolbar rm-flex rm-items-center rm-justify-between rm-px-4 rm-py-2 rm-bg-mosaic-toolbar rm-border-b rm-border-mosaic-border rm-select-none">
         <div
           ref={dragHandle.ref}
-          className="rm-mosaic-window-title rm-font-medium rm-text-sm rm-cursor-move"
+          className="rm-mosaic-window-title rm-font-medium rm-text-sm rm-cursor-grab active:rm-cursor-grabbing"
         >
           {title}
         </div>

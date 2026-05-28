@@ -22,7 +22,7 @@ export { MosaicDropTarget } from './features/drag-drop';
 export type { MosaicDropTargetProps } from './features/drag-drop';
 
 export { MosaicLayout, useMosaicPanels } from './features/panel-manager';
-export type { MosaicLayoutProps } from './features/panel-manager';
+export type { GetDirectionFn, MosaicLayoutProps } from './features/panel-manager';
 
 // Types
 export type {

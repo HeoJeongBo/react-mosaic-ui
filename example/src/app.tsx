@@ -95,6 +95,7 @@ function HighLevelDemo() {
       <div className="demo-mosaic-area">
         <MosaicLayout
           panels={panels}
+          getDirection={(nextCount) => (nextCount % 2 === 0 ? 'row' : 'column')}
           zeroStateView={
             <div className="demo-zero-state">
               <p>Click the + Add Panel button to add panels</p>

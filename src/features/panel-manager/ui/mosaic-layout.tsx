@@ -9,6 +9,7 @@ import {
   updateTree,
 } from '@/shared/lib';
 import type {
+  MosaicDirection,
   MosaicKey,
   MosaicNode,
   MosaicPanelConfig,
@@ -30,11 +31,14 @@ function getPathToLeaf<T extends MosaicKey>(
   );
 }
 
+export type GetDirectionFn = (nextCount: number) => MosaicDirection;
+
 export interface MosaicLayoutProps<TId extends MosaicKey = string>
   extends Omit<MosaicProps<TId>, 'renderTile' | 'value' | 'onChange' | 'initialValue'> {
   panels: MosaicPanelConfig<TId>[];
   className?: string;
   initialNode?: MosaicNode<TId> | null;
+  getDirection?: GetDirectionFn;
 }
 
 // StablePanelList renders inside Mosaic's context provider (via Mosaic children prop).
@@ -69,7 +73,10 @@ function StablePanelList<TId extends MosaicKey>({
             title={panel.title}
             path={path}
             renderToolbar={({ dragHandle }) => (
-              <div ref={dragHandle.ref} className="rm-mosaic-custom-toolbar">
+              <div
+                ref={dragHandle.ref}
+                className="rm-mosaic-custom-toolbar rm-cursor-grab active:rm-cursor-grabbing"
+              >
                 {renderToolbar()}
               </div>
             )}
@@ -98,6 +105,7 @@ export function MosaicLayout<TId extends MosaicKey = string>({
   panels,
   className,
   initialNode,
+  getDirection,
   ...mosaicProps
 }: MosaicLayoutProps<TId>) {
   const [currentNode, setCurrentNode] = useState<MosaicNode<TId> | null>(() =>
@@ -105,6 +113,8 @@ export function MosaicLayout<TId extends MosaicKey = string>({
   );
 
   const prevIdsRef = useRef<Set<TId>>(new Set(panels.map((p) => p.id)));
+  const getDirectionRef = useRef(getDirection);
+  getDirectionRef.current = getDirection;
 
   useEffect(() => {
     const prevIds = prevIdsRef.current;
@@ -143,7 +153,9 @@ export function MosaicLayout<TId extends MosaicKey = string>({
         if (node === null) {
           node = panel.id;
         } else {
-          node = { direction: 'row', first: node, second: panel.id, splitPercentage: 50 };
+          const nextCount = getLeaves(node).length + 1;
+          const direction = getDirectionRef.current ? getDirectionRef.current(nextCount) : 'row';
+          node = { direction, first: node, second: panel.id, splitPercentage: 50 };
         }
       }
 

@@ -1,9 +1,10 @@
 import { MosaicContext } from '@/shared/lib/context';
 import type { MosaicContextValue, MosaicNode, MosaicPanelConfig } from '@/shared/types';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { useContext, useEffect } from 'react';
 import type React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { GetDirectionFn } from './mosaic-layout';
 import { MosaicLayout } from './mosaic-layout';
 
 afterEach(() => cleanup());
@@ -315,5 +316,51 @@ describe('MosaicLayout', () => {
     });
 
     expect(screen.getByTestId('content-a')).toBeInTheDocument();
+  });
+
+  describe('getDirection prop', () => {
+    it('기본값은 항상 row (수평 splitter)', async () => {
+      const { rerender } = render(<MosaicLayout panels={[makePanel('a')]} />);
+      rerender(<MosaicLayout panels={[makePanel('a'), makePanel('b')]} />);
+      // row direction → vertical split bar → cursor-col-resize
+      await waitFor(() => {
+        expect(document.querySelector('.rm-cursor-col-resize')).toBeInTheDocument();
+      });
+    });
+
+    it('getDirection이 column을 반환하면 수직 splitter', async () => {
+      const getDirection: GetDirectionFn = () => 'column';
+      const { rerender } = render(
+        <MosaicLayout panels={[makePanel('a')]} getDirection={getDirection} />,
+      );
+      rerender(
+        <MosaicLayout panels={[makePanel('a'), makePanel('b')]} getDirection={getDirection} />,
+      );
+      // column direction → horizontal split bar → cursor-row-resize
+      await waitFor(() => {
+        expect(document.querySelector('.rm-cursor-row-resize')).toBeInTheDocument();
+      });
+    });
+
+    it('nextCount 기반 교대 방향: 3번째 패널은 column', async () => {
+      // nextCount=2 → row, nextCount=3 → column
+      const getDirection: GetDirectionFn = (nextCount) => (nextCount % 2 === 0 ? 'row' : 'column');
+      const { rerender } = render(
+        <MosaicLayout panels={[makePanel('a')]} getDirection={getDirection} />,
+      );
+      rerender(
+        <MosaicLayout panels={[makePanel('a'), makePanel('b')]} getDirection={getDirection} />,
+      );
+      rerender(
+        <MosaicLayout
+          panels={[makePanel('a'), makePanel('b'), makePanel('c')]}
+          getDirection={getDirection}
+        />,
+      );
+      // 최상위 split이 column → horizontal split bar (cursor-row-resize)
+      await waitFor(() => {
+        expect(document.querySelector('.rm-cursor-row-resize')).toBeInTheDocument();
+      });
+    });
   });
 });
