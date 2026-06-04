@@ -257,7 +257,14 @@ function BetaToolbar() {
 }
 
 function BorderProvider({ children }: { children: React.ReactNode }) {
-  return <div style={{ height: '100%', padding: '4px', boxSizing: 'border-box' }}>{children}</div>;
+  return (
+    <div
+      data-testid="border-wrapper"
+      style={{ height: '100%', padding: '4px', boxSizing: 'border-box' }}
+    >
+      {children}
+    </div>
+  );
 }
 
 // Same shape as a real-world STATIC_SENSOR_CONFIG_REGISTRY — no titles here.

@@ -116,10 +116,12 @@ function AnchorSlot({ anchor }: { anchor: HTMLDivElement }) {
     const host = hostRef.current;
     /* v8 ignore next 1 -- host is always attached when the layout effect runs */
     if (!host) return;
+    // appendChild MOVES the anchor from any prior host to this one (a DOM node has a
+    // single parent). There is intentionally NO cleanup-detach: on a tree reshuffle
+    // or StrictMode remount the next AnchorSlot's setup re-homes the anchor
+    // atomically, so the content is never left detached mid-remount. A panel that is
+    // truly removed has its anchor detached by the panel-departed effect below.
     host.appendChild(anchor);
-    return () => {
-      anchor.remove();
-    };
   }, [anchor]);
   return <div ref={hostRef} style={{ width: '100%', height: '100%' }} />;
 }

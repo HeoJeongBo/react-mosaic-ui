@@ -2,7 +2,7 @@ import { getLeaves } from '@/shared/lib';
 import { MosaicContext } from '@/shared/lib/context';
 import type { MosaicContextValue, MosaicNode, MosaicPanelConfig } from '@/shared/types';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
-import { useContext, useEffect } from 'react';
+import { StrictMode, useContext, useEffect } from 'react';
 import type React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GetDirectionFn } from './mosaic-layout';
@@ -249,6 +249,55 @@ describe('MosaicLayout', () => {
         const content = screen.getByTestId(`content-${id}`);
         // The content's anchor must have been moved INTO a mosaic tile slot,
         // not left orphaned on document.body.
+        expect(content.closest('.react-mosaic')).not.toBeNull();
+        expect(content.closest('.rm-absolute')).not.toBeNull();
+      }
+    });
+
+    it('reshuffle keeps every panel content attached inside its tile slot (StrictMode)', () => {
+      // Reproduces the real-app bug: when the tree reshuffles (a panel moves to a
+      // different depth/parent), its renderTile output remounts. If the anchor is
+      // detached on that unmount, the content is left orphaned (blank tile). Under
+      // StrictMode (as in the example app) the remount is double-invoked, making the
+      // detach deterministic. Asserting DOM containment catches it in jsdom.
+      let ctx: MosaicContextValue<string> | null = null;
+      const Capture = () => {
+        ctx = useContext(MosaicContext) as MosaicContextValue<string>;
+        return <div data-testid="content-a">a</div>;
+      };
+
+      render(
+        <StrictMode>
+          <MosaicLayout
+            panels={[makePanel('a', { content: <Capture /> }), makePanel('b'), makePanel('c')]}
+            initialNode={{
+              direction: 'row',
+              first: 'a',
+              second: { direction: 'column', first: 'b', second: 'c' },
+            }}
+          />
+        </StrictMode>,
+      );
+
+      // Move 'a' from ['first'] to a deeper position so its element-tree position
+      // changes → its AnchorSlot unmounts then remounts.
+      act(() => {
+        ctx!.mosaicActions.updateTree([
+          {
+            path: [],
+            spec: {
+              $set: {
+                direction: 'column',
+                first: { direction: 'row', first: 'b', second: 'a' },
+                second: 'c',
+              },
+            },
+          },
+        ]);
+      });
+
+      for (const id of ['a', 'b', 'c']) {
+        const content = screen.getByTestId(`content-${id}`);
         expect(content.closest('.react-mosaic')).not.toBeNull();
         expect(content.closest('.rm-absolute')).not.toBeNull();
       }
