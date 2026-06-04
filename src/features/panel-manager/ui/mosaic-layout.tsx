@@ -245,8 +245,18 @@ export function MosaicLayout<TId extends MosaicKey = string>({
     return map;
   }, [currentNode, panels]);
 
-  // Drop anchors for panels that are no longer present. AnchorSlot's effect cleanup
-  // already detached them from the DOM on unmount; here we just clear the map entry.
+  // Drop anchors for panels that are no longer present: detach the div and remove
+  // the map entry. This is the ONLY place anchors are torn down — it keys on a real
+  // panels change, so StrictMode's spurious effect double-invoke can't wipe live
+  // anchors (the body is idempotent: an absent id is simply not iterated).
+  //
+  // There is intentionally NO "remove all anchors on unmount" effect: such an effect
+  // has empty deps, so StrictMode runs its cleanup once during the simulated unmount
+  // of the initial mount — clearing the whole anchor map and detaching every anchor,
+  // which then desyncs against the live portals on the next re-render (blank panels).
+  // On a real unmount React removes this component's subtree (the tile-slot hosts and
+  // their appended anchor children) and the `anchorEls` ref is garbage-collected, so
+  // no manual teardown is needed.
   useEffect(() => {
     const currentIds = new Set(panels.map((p) => p.id));
     for (const [id, el] of anchorEls.current.entries()) {
@@ -256,15 +266,6 @@ export function MosaicLayout<TId extends MosaicKey = string>({
       }
     }
   }, [panels]);
-
-  // Detach all anchors on unmount.
-  useEffect(() => {
-    const anchors = anchorEls.current;
-    return () => {
-      for (const el of anchors.values()) el.remove();
-      anchors.clear();
-    };
-  }, []);
 
   const renderTile = useCallback((id: TId, _path: MosaicPath) => {
     const anchor = anchorEls.current.get(id);

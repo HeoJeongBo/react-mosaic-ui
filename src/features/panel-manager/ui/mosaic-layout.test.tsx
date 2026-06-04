@@ -303,6 +303,42 @@ describe('MosaicLayout', () => {
       }
     });
 
+    it('panel content stays attached after a re-render under StrictMode', () => {
+      // StrictMode double-invokes effects on mount (setup → cleanup → setup). A
+      // destructive effect cleanup that detaches anchors / clears the anchor map
+      // would, on the NEXT re-render, mint fresh anchor divs while a memo-skipped
+      // tile (unchanged node) keeps its stale anchor — orphaning the content.
+      // Changing only the root splitPercentage forces a re-render WITHOUT changing
+      // leaf 'a's node identity (so MosaicNodeRenderer memo-skips it), reproducing
+      // exactly that desync. The content must remain connected and inside its slot.
+      let ctx: MosaicContextValue<string> | null = null;
+      const Capture = () => {
+        ctx = useContext(MosaicContext) as MosaicContextValue<string>;
+        return <div data-testid="content-a">a</div>;
+      };
+
+      render(
+        <StrictMode>
+          <MosaicLayout
+            panels={[makePanel('a', { content: <Capture /> }), makePanel('b'), makePanel('c')]}
+            initialNode={{
+              direction: 'row',
+              first: 'a',
+              second: { direction: 'column', first: 'b', second: 'c' },
+            }}
+          />
+        </StrictMode>,
+      );
+
+      act(() => {
+        ctx!.mosaicActions.updateTree([{ path: [], spec: { splitPercentage: { $set: 70 } } }]);
+      });
+
+      const content = screen.getByTestId('content-a');
+      expect(content.isConnected).toBe(true);
+      expect(content.closest('.rm-absolute')).not.toBeNull();
+    });
+
     it('adding a panel does not unmount existing panels', () => {
       let mountCount = 0;
       let unmountCount = 0;

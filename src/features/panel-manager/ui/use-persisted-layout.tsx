@@ -196,7 +196,7 @@ export function usePersistedLayout<TId extends MosaicKey = string>(
 
   const clearLayout = useCallback(() => {
     liveTreeRef.current = null;
-    setActiveIds((prev) => (prev.size === 0 ? prev : new Set()));
+    setActiveIds((prev) => (prev.size === 0 ? prev : new Set<TId>()));
   }, []);
 
   const resetLayout = useCallback(() => {

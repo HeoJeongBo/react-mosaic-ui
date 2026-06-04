@@ -45,9 +45,10 @@ try {
   await page.evaluate((k) => localStorage.removeItem(k), STORAGE_KEY);
   await page.reload({ waitUntil: 'networkidle0' });
 
-  // 2. Persisted tab → Save the default 3-panel layout (alpha + beta + gamma).
-  //    beta carries a custom toolbar, gamma a wrapper — so restoring all three
-  //    lets us verify component + toolbar + wrapper are all rebuilt from the registry.
+  // 2. Persisted tab → Save the default layout (alpha + beta + gamma + measured).
+  //    beta carries a custom toolbar, gamma a wrapper, measured is gated on a
+  //    ResizeObserver — so restoring all four verifies component + toolbar +
+  //    wrapper rebuild AND that a measurement-gated panel actually paints.
   await clickByText(page, PERSISTED_TAB);
   await page.waitForSelector('.react-mosaic', { timeout: 8000 });
   await new Promise((r) => setTimeout(r, 200));
@@ -90,6 +91,13 @@ try {
     const wrapperContent = wrapperEl?.querySelector('.panel-content') ?? null;
     const wrapper = !!wrapperEl && !!wrapperContent && wrapperEl.contains(wrapperContent);
 
+    // measured: the ResizeObserver-gated panel only renders .panel-content with a
+    // "Measured" title once it observed a non-zero size. If the portal anchor was
+    // transiently detached/desynced (StrictMode bug), it stays blank → absent here.
+    const measured = !!root && [...root.querySelectorAll('.panel-content .panel-title')].some(
+      (el) => /Measured/.test(el.textContent ?? ''),
+    );
+
     return {
       total: all.length,
       inside: inside.length,
@@ -97,27 +105,29 @@ try {
       sized: sized.length,
       toolbar,
       wrapper,
+      measured,
     };
   });
 
   console.log('restore audit:', JSON.stringify(result));
 
-  // Default registry has 3 panels (alpha, beta, gamma) → expect all 3 restored,
-  // plus beta's toolbar and gamma's wrapper rebuilt from the registry.
-  const EXPECTED = 3;
+  // Default registry has 4 panels (alpha, beta, gamma, measured) → expect all 4
+  // restored, beta's toolbar + gamma's wrapper rebuilt, and the measured panel painted.
+  const EXPECTED = 4;
   const failures = [];
   if (result.total !== EXPECTED) failures.push(`expected ${EXPECTED} panels, got ${result.total}`);
   if (result.orphaned > 0) failures.push(`${result.orphaned} orphaned (outside .react-mosaic)`);
   if (result.sized < EXPECTED) failures.push(`only ${result.sized} sized`);
   if (!result.toolbar) failures.push('beta custom toolbar NOT restored');
   if (!result.wrapper) failures.push('gamma wrapper NOT restored');
+  if (!result.measured) failures.push('measured (ResizeObserver-gated) panel did NOT paint');
 
   if (failures.length > 0) {
     console.error(`FAIL: ${failures.join('; ')}`);
     process.exitCode = 1;
   } else {
     console.log(
-      `PASS: ${result.sized} panels restored, sized & inside .react-mosaic; toolbar + wrapper rebuilt`,
+      `PASS: ${result.sized} panels restored & sized; toolbar + wrapper + measured all rendered`,
     );
   }
 } finally {

@@ -228,7 +228,7 @@ function LowLevelDemo() {
 // Persisted layout demo — usePersistedLayout (registry + localStorage)
 // ---------------------------------------------------------------------------
 
-type PersistedViewId = 'alpha' | 'beta' | 'gamma';
+type PersistedViewId = 'alpha' | 'beta' | 'gamma' | 'measured';
 
 function PersistedView({ label, color }: { label: string; color: string }) {
   return (
@@ -246,6 +246,39 @@ function BetaView() {
 }
 function GammaView() {
   return <PersistedView label="Gamma" color="#134e4a" />;
+}
+
+// Mirrors a real consumer panel (e.g. oasys sensor views): it measures its own
+// container with a ResizeObserver and only renders its content once a non-zero
+// size is observed. If the library transiently detaches/recreates this panel's
+// portal anchor (StrictMode desync), the observer never reports a real size and
+// `.panel-content` is never rendered — a permanent blank tile. Used by the repro
+// harness to surface the StrictMode portal bug that synchronous content hides.
+function MeasuredView() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setScale(Math.min(entry.contentRect.width, entry.contentRect.height) / 100);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="w-full h-full" style={{ width: '100%', height: '100%' }}>
+      {scale > 0 && (
+        <div className="panel-content" style={{ background: '#7c2d12' }}>
+          <p className="panel-title">Measured (scale {scale.toFixed(2)})</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function BetaToolbar() {
@@ -272,12 +305,14 @@ const PERSISTED_REGISTRY: PersistedLayoutRegistry<PersistedViewId> = {
   alpha: { component: AlphaView },
   beta: { component: BetaView, toolbar: BetaToolbar },
   gamma: { component: GammaView, wrapper: BorderProvider },
+  measured: { component: MeasuredView },
 };
 
 const PERSISTED_TITLES: Record<PersistedViewId, string> = {
   alpha: 'Alpha',
   beta: 'Beta',
   gamma: 'Gamma',
+  measured: 'Measured',
 };
 
 const PERSISTED_STORAGE_KEY = 'react-mosaic-demo-layout';
@@ -316,7 +351,7 @@ function PersistedDemoInner({ onReset }: { onReset: () => void }) {
     onReset();
   };
 
-  const ids: PersistedViewId[] = ['alpha', 'beta', 'gamma'];
+  const ids: PersistedViewId[] = ['alpha', 'beta', 'gamma', 'measured'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '0.75rem' }}>
