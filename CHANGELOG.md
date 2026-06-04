@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.1](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.4.0...v2.4.1) (2026-06-04)
+
+### Bug Fixes
+
+* persist issue ([a7febc7](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/a7febc705eacecd08f06847ace21b9f29f111890))
+
 ## [2.4.0](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.3.4...v2.4.0) (2026-06-04)
 
 ### Features
