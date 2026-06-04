@@ -164,6 +164,10 @@ Renders a mosaic from a flat array of panel configs. Adding or removing panels s
 | Prop | Type | Description |
 |------|------|-------------|
 | `panels` | `MosaicPanelConfig<T>[]` | required — panels to display |
+| `initialNode` | `MosaicNode<T> \| null` | Starting tree, read once on mount. Falls back to a balanced tree built from `panels` when omitted |
+| `onNodeChange` | `(node: MosaicNode<T> \| null) => void` | Called whenever the tree changes (resize, drag, add/remove) |
+| `onPanelClose` | `(id: T) => void` | Called when a panel is closed |
+| `getDirection` | `(nextCount: number) => 'row' \| 'column'` | Split direction used when a panel is added (`nextCount` = leaf count after the add) |
 | `className` | `string` | Extra CSS class |
 | `zeroStateView` | `JSX.Element` | Shown when panels array is empty |
 | `...rest` | — | All other `<Mosaic>` props except `renderTile`, `value`, `onChange`, `initialValue` |
@@ -198,6 +202,74 @@ const panel = getPanelById('logs'); // MosaicPanelConfig | null
 // Remove
 removePanel('logs');
 ```
+
+### `usePersistedLayout<T>()`
+
+Saves the layout to `localStorage` and restores it on reload. Panels are described by a **registry** that maps each id to its component(s) — only panel ids and the tree (with split percentages) are persisted, and the registry rebuilds the `MosaicPanelConfig`s on restore. Saving is **manual** (`saveLayout()`); restoring is automatic on mount.
+
+The registry shape mirrors a real-world config map, so an existing one can be passed as-is:
+
+**`PersistedPanelEntry`**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `component` | `ComponentType` | Rendered as the panel body |
+| `toolbar` | `ComponentType` | Optional custom toolbar component |
+| `wrapper` | `ComponentType<{ children: ReactNode }>` | Optional wrapper (e.g. a context provider) |
+| `closable` | `boolean` | Optional — show/hide the close button |
+
+**Options**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `storageKey` | `string` | required — `localStorage` key |
+| `registry` | `PersistedLayoutRegistry<T>` | required — `Record<T, PersistedPanelEntry>` |
+| `titles` | `Partial<Record<T, string>>` | Optional id → window title map; falls back to `String(id)` |
+| `defaultPanelIds` | `T[]` | Panels shown on a clean first run; defaults to all registry keys |
+
+**Return**
+
+| Return | Type | Description |
+|--------|------|-------------|
+| `panels` | `MosaicPanelConfig<T>[]` | Pass to `<MosaicLayout panels={...} />` |
+| `initialNode` | `MosaicNode<T> \| null` | Pass to `<MosaicLayout initialNode={...} />` |
+| `onNodeChange` | `(node) => void` | Wire to `<MosaicLayout onNodeChange={...} />` to track the live tree |
+| `saveLayout()` | `void` | Persist the latest tree (call from a Save button) |
+| `addPanel(id)` | `void` | Show a panel; no-op if id is not in the registry |
+| `removePanel(id)` | `void` | Hide a panel |
+| `hasPanel(id)` | `boolean` | Whether a panel id is currently shown |
+| `clearLayout()` | `void` | Hide all panels (does not touch storage) |
+| `resetLayout()` | `void` | Clear stored layout and restore the default panel set |
+
+```tsx
+import { MosaicLayout, usePersistedLayout } from '@heojeongbo/react-mosaic-ui';
+import type { PersistedLayoutRegistry } from '@heojeongbo/react-mosaic-ui';
+
+// Same shape as a real STATIC_SENSOR_CONFIG_REGISTRY — no titles inline.
+const REGISTRY: PersistedLayoutRegistry = {
+  'encoder-data': { component: EncoderData, toolbar: EncoderToolbar, wrapper: EncoderProvider },
+  'motor-position': { component: MotorPosition },
+  '2d-lidar': { component: Lidar2D },
+};
+const TITLES = { 'encoder-data': 'Encoder', 'motor-position': 'Motor', '2d-lidar': '2D LiDAR' };
+
+function Dashboard() {
+  const { panels, initialNode, onNodeChange, saveLayout } = usePersistedLayout({
+    storageKey: 'dashboard-layout',
+    registry: REGISTRY,
+    titles: TITLES,
+  });
+
+  return (
+    <>
+      <button onClick={saveLayout}>Save layout</button>
+      <MosaicLayout panels={panels} initialNode={initialNode} onNodeChange={onNodeChange} />
+    </>
+  );
+}
+```
+
+> `MosaicLayout` reads `initialNode` only once (on mount). To apply a fresh tree after `resetLayout()`, remount the subtree by bumping a React `key`.
 
 ---
 
@@ -250,6 +322,7 @@ import {
   // Tree inspection
   getLeaves,                    // Get all leaf IDs in order
   isParent,                     // Check if a node is a parent
+  pruneTree,                    // Drop leaves not in a valid-id set, collapsing emptied splits
   getNodeAtPath,                // Get node at a given path
   getAndAssertNodeAtPathExists, // Same, throws if not found
   countNodes,                   // Count total nodes in the tree
@@ -286,6 +359,10 @@ setTree(balanced);
 // Remove a specific tile programmatically
 const update = createRemoveUpdate(tree, pathToTile);
 setTree(updateTree(tree, [update]));
+
+// Drop tiles whose ids are no longer valid (e.g. when restoring a saved tree)
+const valid = new Set(['editor', 'preview']);
+const cleaned = pruneTree(tree, valid); // emptied splits collapse to the surviving side
 ```
 
 ### Contexts
@@ -485,7 +562,7 @@ bun install
 # Build library
 bun run build
 
-# Run tests (306 tests)
+# Run tests (367 tests)
 bun run test
 
 # Type check

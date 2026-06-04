@@ -36,6 +36,11 @@ Then open your browser to `http://localhost:5173`
 - **Minimum Size**: Windows respect minimum size constraints
 - **Live Update**: See changes in real-time as you resize
 
+### 💾 Persisted Layout
+- **Registry-based panels**: Panels are described by an id → component registry (`usePersistedLayout`)
+- **Save Layout**: Persist the current arrangement (and split sizes) to `localStorage`
+- **Restore on reload**: Reopen the page and the saved layout is rebuilt automatically
+
 ## Code Structure
 
 ```
@@ -68,5 +73,5 @@ The example uses Tailwind CSS for styling. You can customize the theme by modify
 ## Learn More
 
 - [Main Documentation](../README.md)
-- [FSD Architecture](../fsd-architecture.md)
-- [API Reference](../README.md#-api)
+- [FSD Architecture](../docs/fsd-architecture.md)
+- [API Reference](../README.md#api-reference)
