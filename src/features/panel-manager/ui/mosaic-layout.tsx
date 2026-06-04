@@ -16,7 +16,7 @@ import type {
   MosaicPath,
   MosaicUpdate,
 } from '@/shared/types';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 function getPathToLeaf<T extends MosaicKey>(
@@ -39,39 +39,42 @@ export interface MosaicLayoutProps<TId extends MosaicKey = string>
   className?: string;
   initialNode?: MosaicNode<TId> | null;
   getDirection?: GetDirectionFn;
+  onPanelClose?: (id: TId) => void;
+  onNodeChange?: (node: MosaicNode<TId> | null) => void;
 }
 
 // StablePanelList renders inside Mosaic's context provider (via Mosaic children prop).
-// Each panel is portaled into a stable body-attached anchor div. renderTile appends
-// that anchor div into the tile slot container via a DOM ref, so the anchor never
-// changes identity — React portal target stays fixed, preventing unmount/remount.
+// Each panel's content is portaled into a STABLE anchor div (identity never changes for
+// a given id) so the portal target is fixed — the panel subtree is never unmounted when
+// the tree reshuffles. AnchorSlot (rendered by renderTile) places that anchor into the
+// current tile slot via a React-owned layout effect (StrictMode-safe — no manual gate).
 function StablePanelList<TId extends MosaicKey>({
   panels,
   panelMap,
   anchorEls,
   paths,
-  anchorVersion,
 }: {
   panels: MosaicPanelConfig<TId>[];
   panelMap: Map<TId, MosaicPanelConfig<TId>>;
   anchorEls: React.MutableRefObject<Map<TId, HTMLDivElement>>;
   paths: Map<TId, MosaicPath>;
-  anchorVersion: number;
 }) {
-  void anchorVersion;
   return (
     <>
       {panels.map((p) => {
         const panel = panelMap.get(p.id);
         const anchor = anchorEls.current.get(p.id);
         const path = paths.get(p.id) ?? [];
+        /* v8 ignore next 1 -- defensive: panelMap and anchorEls are both built from `panels`, so both always resolve here */
         if (!panel || !anchor) return null;
 
         const renderToolbar = panel.renderToolbar;
+        const closableProps = panel.closable !== undefined ? { closable: panel.closable } : {};
         const windowContent = renderToolbar ? (
           <MosaicWindow<TId>
             title={panel.title}
             path={path}
+            {...closableProps}
             renderToolbar={({ dragHandle }) => (
               <div
                 ref={dragHandle.ref}
@@ -84,7 +87,7 @@ function StablePanelList<TId extends MosaicKey>({
             {panel.content}
           </MosaicWindow>
         ) : (
-          <MosaicWindow<TId> title={panel.title} path={path}>
+          <MosaicWindow<TId> title={panel.title} path={path} {...closableProps}>
             {panel.content}
           </MosaicWindow>
         );
@@ -101,11 +104,33 @@ function StablePanelList<TId extends MosaicKey>({
   );
 }
 
+// Placed by renderTile into each tile slot. It mounts the stable `anchor` div as a
+// child of its host via a React-owned layout effect: setup appends, cleanup removes.
+// Because React re-mounts this component (and re-commits a fresh host) whenever the
+// tile slot changes — including StrictMode's double-mount — the effect re-runs and
+// re-homes the anchor deterministically against the host React just committed. No
+// manual parent-comparison gate, so it never desyncs from React's node ownership.
+function AnchorSlot({ anchor }: { anchor: HTMLDivElement }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    /* v8 ignore next 1 -- host is always attached when the layout effect runs */
+    if (!host) return;
+    host.appendChild(anchor);
+    return () => {
+      anchor.remove();
+    };
+  }, [anchor]);
+  return <div ref={hostRef} style={{ width: '100%', height: '100%' }} />;
+}
+
 export function MosaicLayout<TId extends MosaicKey = string>({
   panels,
   className,
   initialNode,
   getDirection,
+  onPanelClose,
+  onNodeChange,
   ...mosaicProps
 }: MosaicLayoutProps<TId>) {
   const [currentNode, setCurrentNode] = useState<MosaicNode<TId> | null>(() =>
@@ -115,6 +140,12 @@ export function MosaicLayout<TId extends MosaicKey = string>({
   const prevIdsRef = useRef<Set<TId>>(new Set(panels.map((p) => p.id)));
   const getDirectionRef = useRef(getDirection);
   getDirectionRef.current = getDirection;
+  const currentNodeRef = useRef(currentNode);
+  currentNodeRef.current = currentNode;
+  const onPanelCloseRef = useRef(onPanelClose);
+  onPanelCloseRef.current = onPanelClose;
+  const onNodeChangeRef = useRef(onNodeChange);
+  onNodeChangeRef.current = onNodeChange;
 
   useEffect(() => {
     const prevIds = prevIdsRef.current;
@@ -127,13 +158,18 @@ export function MosaicLayout<TId extends MosaicKey = string>({
 
     if (addedPanels.length === 0 && removedIds.length === 0) return;
 
-    setCurrentNode((prev) => {
+    // Compute the reconciled node outside the setState updater so we can also
+    // notify the parent via onNodeChange — otherwise programmatic panel add/remove
+    // would advance the rendered tree without the parent (e.g. usePersistedLayout)
+    // ever observing it, leaving its tracked tree stale.
+    const computeNext = (prev: MosaicNode<TId> | null): MosaicNode<TId> | null => {
       if (nextIds.size === 0) return null;
       if (prev === null) return createBalancedTreeFromLeaves([...nextIds]);
 
       let node: MosaicNode<TId> | null = prev;
 
       for (const id of removedIds) {
+        /* v8 ignore next 1 -- defensive: the loop always exits via break/return before node becomes null at the top */
         if (node === null) break;
         const leaves = getLeaves(node);
         const path = getPathToLeaf(node, id);
@@ -160,26 +196,38 @@ export function MosaicLayout<TId extends MosaicKey = string>({
       }
 
       return node;
-    });
+    };
+
+    const nextNode = computeNext(currentNodeRef.current);
+    setCurrentNode(nextNode);
+    onNodeChangeRef.current?.(nextNode);
   }, [panels]);
 
   const onChange = useCallback((node: MosaicNode<TId> | null) => {
+    const prev = currentNodeRef.current;
     setCurrentNode(node);
+    onNodeChangeRef.current?.(node);
+    if (onPanelCloseRef.current && prev !== null) {
+      const prevLeaves = getLeaves(prev);
+      const nextLeaves = new Set(node ? getLeaves(node) : []);
+      for (const id of prevLeaves) {
+        if (!nextLeaves.has(id)) onPanelCloseRef.current(id);
+      }
+    }
   }, []);
 
   const panelMap = useMemo(() => new Map(panels.map((p) => [p.id, p])), [panels]);
 
-  // anchorEls: stable DOM nodes attached to document.body, one per panel id.
-  // They never change identity, so createPortal always targets the same node.
-  // renderTile appends each anchor into the tile slot container div via a DOM ref,
-  // making it visible at the right layout position without re-mounting.
+  // anchorEls: stable DOM nodes (one per panel id) that serve as the fixed portal
+  // target for each panel. Their identity never changes, so reshuffling the tree
+  // never remounts panel content (stable-mount guarantee). renderTile re-parents
+  // each anchor into the live tile slot.
   const anchorEls = useRef<Map<TId, HTMLDivElement>>(new Map());
   for (const p of panels) {
     if (!anchorEls.current.has(p.id)) {
       const el = document.createElement('div');
       el.style.width = '100%';
       el.style.height = '100%';
-      document.body.appendChild(el);
       anchorEls.current.set(p.id, el);
     }
   }
@@ -195,11 +243,8 @@ export function MosaicLayout<TId extends MosaicKey = string>({
     return map;
   }, [currentNode, panels]);
 
-  // Increments when a new anchor is first positioned into a tile slot,
-  // causing StablePanelList to re-render and activate the portal.
-  const [anchorVersion, setAnchorVersion] = useState(0);
-
-  // Remove anchors for panels that are no longer present.
+  // Drop anchors for panels that are no longer present. AnchorSlot's effect cleanup
+  // already detached them from the DOM on unmount; here we just clear the map entry.
   useEffect(() => {
     const currentIds = new Set(panels.map((p) => p.id));
     for (const [id, el] of anchorEls.current.entries()) {
@@ -210,7 +255,7 @@ export function MosaicLayout<TId extends MosaicKey = string>({
     }
   }, [panels]);
 
-  // Detach all anchors from body on unmount.
+  // Detach all anchors on unmount.
   useEffect(() => {
     const anchors = anchorEls.current;
     return () => {
@@ -221,22 +266,9 @@ export function MosaicLayout<TId extends MosaicKey = string>({
 
   const renderTile = useCallback((id: TId, _path: MosaicPath) => {
     const anchor = anchorEls.current.get(id);
-
-    return (
-      <div
-        style={{ width: '100%', height: '100%' }}
-        ref={(container) => {
-          if (!container || !anchor) return;
-          if (anchor.parentElement !== container) {
-            // Move the stable anchor div into this tile slot container.
-            // This is a direct DOM operation outside React, so anchor's
-            // React subtree (and the portal into it) is unaffected.
-            container.appendChild(anchor);
-            setAnchorVersion((v) => v + 1);
-          }
-        }}
-      />
-    );
+    /* v8 ignore next 1 -- anchor is created during render for every panel id */
+    if (!anchor) return <div style={{ width: '100%', height: '100%' }} />;
+    return <AnchorSlot anchor={anchor} />;
   }, []);
 
   const mosaicClassName = className ?? '';
@@ -250,13 +282,7 @@ export function MosaicLayout<TId extends MosaicKey = string>({
         {...(mosaicClassName ? { className: mosaicClassName } : {})}
         {...mosaicProps}
       >
-        <StablePanelList
-          panels={panels}
-          panelMap={panelMap}
-          anchorEls={anchorEls}
-          paths={paths}
-          anchorVersion={anchorVersion}
-        />
+        <StablePanelList panels={panels} panelMap={panelMap} anchorEls={anchorEls} paths={paths} />
       </Mosaic>
     </div>
   );

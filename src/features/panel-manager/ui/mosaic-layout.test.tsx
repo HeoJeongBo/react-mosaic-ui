@@ -1,3 +1,4 @@
+import { getLeaves } from '@/shared/lib';
 import { MosaicContext } from '@/shared/lib/context';
 import type { MosaicContextValue, MosaicNode, MosaicPanelConfig } from '@/shared/types';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
@@ -165,6 +166,18 @@ describe('MosaicLayout', () => {
       expect(screen.getByTestId('content-b')).toBeInTheDocument();
       expect(screen.queryByTestId('content-a')).toBeNull();
     });
+
+    it('removing a panel whose id is absent from the tree is skipped (getPathToLeaf null)', () => {
+      // initialNode only contains 'a' even though panel 'b' is supplied — so 'b'
+      // has no leaf in the tree. Removing 'b' exercises the `path === null` continue.
+      const { rerender } = render(
+        <MosaicLayout panels={[makePanel('a'), makePanel('b')]} initialNode="a" />,
+      );
+      expect(screen.getByTestId('content-a')).toBeInTheDocument();
+
+      rerender(<MosaicLayout panels={[makePanel('a')]} initialNode="a" />);
+      expect(screen.getByTestId('content-a')).toBeInTheDocument();
+    });
   });
 
   describe('initialNode prop', () => {
@@ -217,6 +230,30 @@ describe('MosaicLayout', () => {
   });
 
   describe('stable mount (portal)', () => {
+    it('restored multi-panel initialNode mounts each content inside a mosaic tile slot', () => {
+      // A nested 3-panel restore exercises the multi-anchor-in-one-commit case:
+      // the layout effect must home every anchor into its tile slot on first mount,
+      // not just the last one positioned by a ref callback.
+      render(
+        <MosaicLayout
+          panels={[makePanel('alpha'), makePanel('beta'), makePanel('gamma')]}
+          initialNode={{
+            direction: 'row',
+            first: 'alpha',
+            second: { direction: 'column', first: 'beta', second: 'gamma' },
+          }}
+        />,
+      );
+
+      for (const id of ['alpha', 'beta', 'gamma']) {
+        const content = screen.getByTestId(`content-${id}`);
+        // The content's anchor must have been moved INTO a mosaic tile slot,
+        // not left orphaned on document.body.
+        expect(content.closest('.react-mosaic')).not.toBeNull();
+        expect(content.closest('.rm-absolute')).not.toBeNull();
+      }
+    });
+
     it('adding a panel does not unmount existing panels', () => {
       let mountCount = 0;
       let unmountCount = 0;
@@ -361,6 +398,125 @@ describe('MosaicLayout', () => {
       await waitFor(() => {
         expect(document.querySelector('.rm-cursor-row-resize')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('onPanelClose prop', () => {
+    it('MosaicWindow Close 버튼 클릭 시 onPanelClose(id)가 호출됨', async () => {
+      const onPanelClose = vi.fn();
+      render(
+        <MosaicLayout panels={[makePanel('a'), makePanel('b')]} onPanelClose={onPanelClose} />,
+      );
+
+      const closeButtons = screen.getAllByTitle('Close');
+      act(() => {
+        closeButtons[0]!.click();
+      });
+
+      await waitFor(() => {
+        expect(onPanelClose).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('onChange(null) fires onPanelClose for every previously-open panel', () => {
+      const onPanelClose = vi.fn();
+      let capturedCtx: MosaicContextValue<string> | null = null;
+      const ContextCapture = () => {
+        capturedCtx = useContext(MosaicContext) as MosaicContextValue<string>;
+        return null;
+      };
+
+      render(
+        <MosaicLayout
+          panels={[makePanel('a', { content: <ContextCapture /> }), makePanel('b')]}
+          onPanelClose={onPanelClose}
+        />,
+      );
+
+      // Removing the root path collapses the whole tree to null, exercising the
+      // `node ? getLeaves(node) : []` null branch in onChange.
+      act(() => {
+        capturedCtx!.mosaicActions.remove([]);
+      });
+
+      expect(onPanelClose).toHaveBeenCalledWith('a');
+      expect(onPanelClose).toHaveBeenCalledWith('b');
+    });
+  });
+
+  describe('onNodeChange prop', () => {
+    it('MosaicWindow Close 버튼으로 트리가 바뀌면 onNodeChange가 호출됨', async () => {
+      const onNodeChange = vi.fn();
+      render(
+        <MosaicLayout panels={[makePanel('a'), makePanel('b')]} onNodeChange={onNodeChange} />,
+      );
+      const closeButtons = screen.getAllByTitle('Close');
+      act(() => {
+        closeButtons[0]!.click();
+      });
+      await waitFor(() => {
+        expect(onNodeChange).toHaveBeenCalled();
+      });
+    });
+
+    it('panels prop change (add) fires onNodeChange with the reconciled tree', () => {
+      const onNodeChange = vi.fn();
+      const { rerender } = render(
+        <MosaicLayout panels={[makePanel('a')]} initialNode="a" onNodeChange={onNodeChange} />,
+      );
+      onNodeChange.mockClear(); // ignore any mount-time call
+
+      rerender(
+        <MosaicLayout
+          panels={[makePanel('a'), makePanel('b')]}
+          initialNode="a"
+          onNodeChange={onNodeChange}
+        />,
+      );
+
+      expect(onNodeChange).toHaveBeenCalledTimes(1);
+      const node = onNodeChange.mock.calls[0]![0] as MosaicNode<string>;
+      expect(new Set(getLeaves(node))).toEqual(new Set(['a', 'b']));
+    });
+
+    it('panels prop change (remove) fires onNodeChange with the reconciled tree', () => {
+      const onNodeChange = vi.fn();
+      const { rerender } = render(
+        <MosaicLayout panels={[makePanel('a'), makePanel('b')]} onNodeChange={onNodeChange} />,
+      );
+      onNodeChange.mockClear();
+
+      rerender(<MosaicLayout panels={[makePanel('a')]} onNodeChange={onNodeChange} />);
+
+      expect(onNodeChange).toHaveBeenCalledTimes(1);
+      expect(onNodeChange.mock.calls[0]![0]).toBe('a'); // collapsed to a single leaf
+    });
+  });
+
+  describe('togglePanel 오버로드', () => {
+    it('id만으로 togglePanel 호출 시 해당 패널이 제거됨', () => {
+      const { rerender } = render(<MosaicLayout panels={[makePanel('a'), makePanel('b')]} />);
+      expect(screen.getByTestId('content-a')).toBeInTheDocument();
+      expect(screen.getByTestId('content-b')).toBeInTheDocument();
+      rerender(<MosaicLayout panels={[makePanel('b')]} />);
+      expect(screen.queryByTestId('content-a')).toBeNull();
+    });
+  });
+
+  describe('closable prop', () => {
+    it('closable=false이면 Close 버튼이 렌더되지 않음', () => {
+      render(<MosaicLayout panels={[makePanel('a', { closable: false })]} />);
+      expect(screen.queryByTitle('Close')).toBeNull();
+    });
+
+    it('closable=true이면 Close 버튼이 렌더됨', () => {
+      render(<MosaicLayout panels={[makePanel('a', { closable: true })]} />);
+      expect(screen.getByTitle('Close')).toBeInTheDocument();
+    });
+
+    it('closable 미지정이면 기본적으로 Close 버튼이 렌더됨', () => {
+      render(<MosaicLayout panels={[makePanel('a')]} />);
+      expect(screen.getByTitle('Close')).toBeInTheDocument();
     });
   });
 });

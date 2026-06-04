@@ -1,6 +1,6 @@
 import { MosaicContext } from '@/shared/lib/context';
 import type { MosaicContextValue, MosaicNode, MosaicParent, MosaicPath } from '@/shared/types';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React, { useContext } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Mosaic } from './mosaic';
@@ -25,6 +25,19 @@ describe('Mosaic', () => {
         <Mosaic value={null} onChange={() => {}} renderTile={renderTile} />,
       );
       expect(container.querySelector('.react-mosaic')).toBeInTheDocument();
+    });
+
+    it('prevents default on dragOver and drop over the root container', () => {
+      const { container } = render(
+        <Mosaic value="a" onChange={() => {}} renderTile={renderTile} />,
+      );
+      const root = container.querySelector('.react-mosaic') as HTMLElement;
+
+      const dragOver = fireEvent.dragOver(root);
+      expect(dragOver).toBe(false); // fireEvent returns false when preventDefault was called
+
+      const drop = fireEvent.drop(root);
+      expect(drop).toBe(false);
     });
 
     it('renders tile when value is a leaf', () => {
@@ -258,6 +271,78 @@ describe('Mosaic', () => {
 
       capturedActions!.mosaicActions.remove([] as unknown as MosaicPath);
       expect(onRelease).toHaveBeenCalledWith(null);
+    });
+
+    it('calls onChange and onRelease when removing a non-last tile (uncontrolled)', () => {
+      const onChange = vi.fn();
+      const onRelease = vi.fn();
+      let capturedActions: MosaicContextValue<string> | null = null;
+
+      const CapturingTile = () => {
+        const ctx = useContext(MosaicContext);
+        capturedActions = ctx as MosaicContextValue<string>;
+        return <div data-testid="tile-a">a</div>;
+      };
+
+      render(
+        <Mosaic
+          initialValue={{ direction: 'row', first: 'a', second: 'b', splitPercentage: 50 }}
+          onChange={onChange}
+          onRelease={onRelease}
+          renderTile={() => <CapturingTile />}
+        />,
+      );
+
+      capturedActions!.mosaicActions.remove(['first']);
+      expect(onChange).toHaveBeenCalled();
+      expect(onRelease).toHaveBeenCalled();
+    });
+  });
+
+  describe('mosaicActions.expand', () => {
+    it('calls onChange and onRelease when expand is called (uncontrolled)', () => {
+      const onChange = vi.fn();
+      const onRelease = vi.fn();
+      let capturedActions: MosaicContextValue<string> | null = null;
+
+      const CapturingTile = () => {
+        const ctx = useContext(MosaicContext);
+        capturedActions = ctx as MosaicContextValue<string>;
+        return <div data-testid="tile-a">a</div>;
+      };
+
+      render(
+        <Mosaic
+          initialValue={{ direction: 'row', first: 'a', second: 'b', splitPercentage: 50 }}
+          onChange={onChange}
+          onRelease={onRelease}
+          renderTile={() => <CapturingTile />}
+        />,
+      );
+
+      capturedActions!.mosaicActions.expand(['first'], 75);
+      expect(onChange).toHaveBeenCalled();
+      expect(onRelease).toHaveBeenCalled();
+    });
+
+    it('is a no-op when root is null', () => {
+      const onChange = vi.fn();
+      let capturedActions: MosaicContextValue<string> | null = null;
+
+      const CapturingTile = () => {
+        const ctx = useContext(MosaicContext);
+        capturedActions = ctx as MosaicContextValue<string>;
+        return <div data-testid="tile-a">a</div>;
+      };
+
+      const { rerender } = render(
+        <Mosaic value="a" onChange={onChange} renderTile={() => <CapturingTile />} />,
+      );
+      rerender(<Mosaic value={null} onChange={onChange} renderTile={() => <CapturingTile />} />);
+
+      onChange.mockClear();
+      capturedActions!.mosaicActions.expand(['first'], 50);
+      expect(onChange).not.toHaveBeenCalled();
     });
   });
 

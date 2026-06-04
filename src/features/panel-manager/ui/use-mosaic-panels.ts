@@ -13,12 +13,14 @@ export function useMosaicPanels<TId extends MosaicKey = string>() {
     setPanels((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
-  const togglePanel = useCallback((panel: MosaicPanelConfig<TId>) => {
-    setPanels((prev) =>
-      prev.some((p) => p.id === panel.id)
-        ? prev.filter((p) => p.id !== panel.id)
-        : [...prev, panel],
-    );
+  const togglePanel = useCallback((panelOrId: MosaicPanelConfig<TId> | TId) => {
+    const isConfig = typeof panelOrId === 'object' && panelOrId !== null;
+    const id = isConfig ? (panelOrId as MosaicPanelConfig<TId>).id : (panelOrId as TId);
+    setPanels((prev) => {
+      if (prev.some((p) => p.id === id)) return prev.filter((p) => p.id !== id);
+      if (!isConfig) return prev;
+      return [...prev, panelOrId as MosaicPanelConfig<TId>];
+    });
   }, []);
 
   const hasPanel = useCallback((id: TId) => panels.some((p) => p.id === id), [panels]);

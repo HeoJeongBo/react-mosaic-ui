@@ -87,6 +87,7 @@
 		"husky": "^9.1.7",
 		"jsdom": "^25.0.1",
 		"postcss": "^8.4.49",
+		"puppeteer-core": "^25.1.0",
 		"react": "^18.3.1",
 		"react-dnd-test-backend": "^16.0.1",
 		"react-dom": "^18.3.1",

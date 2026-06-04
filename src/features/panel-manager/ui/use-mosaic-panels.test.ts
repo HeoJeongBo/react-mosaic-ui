@@ -55,6 +55,19 @@ describe('useMosaicPanels', () => {
       act(() => result.current.togglePanel(makePanel('a')));
       expect(result.current.panels).toHaveLength(0);
     });
+
+    it('id만으로 호출 시 존재하는 패널을 제거함', () => {
+      const { result } = renderHook(() => useMosaicPanels());
+      act(() => result.current.addPanel(makePanel('a')));
+      act(() => result.current.togglePanel('a'));
+      expect(result.current.panels).toHaveLength(0);
+    });
+
+    it('id만으로 호출 시 없는 패널이면 no-op', () => {
+      const { result } = renderHook(() => useMosaicPanels());
+      act(() => result.current.togglePanel('nonexistent'));
+      expect(result.current.panels).toHaveLength(0);
+    });
   });
 
   describe('hasPanel', () => {

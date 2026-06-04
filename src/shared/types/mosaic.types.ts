@@ -116,6 +116,7 @@ export interface MosaicPanelConfig<TId extends MosaicKey = string> {
   content: import('react').ReactNode;
   renderToolbar?: () => import('react').ReactNode;
   Wrapper?: import('react').ComponentType<{ children: import('react').ReactNode }>;
+  closable?: boolean;
 }
 
 /**

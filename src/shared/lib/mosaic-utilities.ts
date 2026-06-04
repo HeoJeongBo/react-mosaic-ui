@@ -39,6 +39,35 @@ export const getLeaves = <T extends MosaicKey>(node: MosaicNode<T> | null): T[] 
 };
 
 /**
+ * Remove leaves not present in `validIds`, collapsing any split whose child
+ * prunes away entirely to the surviving sibling. Preserves `direction` and
+ * `splitPercentage` on surviving splits. Returns the same node reference when
+ * nothing was pruned (avoids needless re-renders), and `null` when every leaf
+ * is stale.
+ */
+export const pruneTree = <T extends MosaicKey>(
+  node: MosaicNode<T> | null,
+  validIds: Set<T>,
+): MosaicNode<T> | null => {
+  if (node === null) {
+    return null;
+  }
+
+  if (!isParent(node)) {
+    return validIds.has(node) ? node : null;
+  }
+
+  const first = pruneTree(node.first, validIds);
+  const second = pruneTree(node.second, validIds);
+
+  if (first === null) return second;
+  if (second === null) return first;
+  if (first === node.first && second === node.second) return node;
+
+  return { ...node, first, second };
+};
+
+/**
  * Get the node at a given path
  */
 export const getNodeAtPath = <T extends MosaicKey>(

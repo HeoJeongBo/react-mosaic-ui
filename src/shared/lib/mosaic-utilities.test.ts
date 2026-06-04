@@ -13,6 +13,7 @@ import {
   getPathToCorner,
   getTreeDepth,
   isParent,
+  pruneTree,
 } from './mosaic-utilities';
 
 type TestId = 'a' | 'b' | 'c' | 'd' | 'e';
@@ -357,6 +358,48 @@ describe('mosaic-utilities', () => {
 
     it('should return false for reversed paths', () => {
       expect(arePathsEqual(['first', 'second'], ['second', 'first'])).toBe(false);
+    });
+  });
+
+  describe('pruneTree', () => {
+    const valid = new Set<TestId>(['a', 'b', 'c']);
+
+    it('returns null for a null node', () => {
+      expect(pruneTree(null, valid)).toBeNull();
+    });
+
+    it('keeps a valid leaf and drops an invalid leaf', () => {
+      expect(pruneTree('a', valid)).toBe('a');
+      expect(pruneTree('e', valid)).toBeNull();
+    });
+
+    it('returns the same reference when nothing is pruned', () => {
+      const node: MosaicNode<TestId> = { direction: 'row', first: 'a', second: 'b' };
+      expect(pruneTree(node, valid)).toBe(node);
+    });
+
+    it('collapses to the surviving sibling when one side is invalid', () => {
+      expect(pruneTree({ direction: 'row', first: 'a', second: 'e' }, valid)).toBe('a');
+      expect(pruneTree({ direction: 'row', first: 'e', second: 'b' }, valid)).toBe('b');
+    });
+
+    it('prunes nested invalid leaves and preserves direction/splitPercentage', () => {
+      const node: MosaicNode<TestId> = {
+        direction: 'column',
+        first: 'a',
+        second: { direction: 'row', first: 'b', second: 'e', splitPercentage: 70 },
+        splitPercentage: 40,
+      };
+      expect(pruneTree(node, valid)).toEqual({
+        direction: 'column',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 40,
+      });
+    });
+
+    it('returns null when every leaf is invalid', () => {
+      expect(pruneTree({ direction: 'row', first: 'd', second: 'e' }, valid)).toBeNull();
     });
   });
 });

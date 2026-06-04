@@ -4,9 +4,11 @@ import {
   type MosaicNode,
   type MosaicPath,
   MosaicWindow,
+  type PersistedLayoutRegistry,
   createBalancedTreeFromLeaves,
   getLeaves,
   useMosaicPanels,
+  usePersistedLayout,
 } from '@heojeongbo/react-mosaic-ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -223,10 +225,140 @@ function LowLevelDemo() {
 }
 
 // ---------------------------------------------------------------------------
+// Persisted layout demo — usePersistedLayout (registry + localStorage)
+// ---------------------------------------------------------------------------
+
+type PersistedViewId = 'alpha' | 'beta' | 'gamma';
+
+function PersistedView({ label, color }: { label: string; color: string }) {
+  return (
+    <div className="panel-content" style={{ background: color }}>
+      <p className="panel-title">{label}</p>
+    </div>
+  );
+}
+
+function AlphaView() {
+  return <PersistedView label="Alpha" color="#1e293b" />;
+}
+function BetaView() {
+  return <PersistedView label="Beta" color="#312e81" />;
+}
+function GammaView() {
+  return <PersistedView label="Gamma" color="#134e4a" />;
+}
+
+function BetaToolbar() {
+  return (
+    <div className="demo-window-toolbar">
+      <span>Beta (custom toolbar)</span>
+    </div>
+  );
+}
+
+function BorderProvider({ children }: { children: React.ReactNode }) {
+  return <div style={{ height: '100%', padding: '4px', boxSizing: 'border-box' }}>{children}</div>;
+}
+
+// Same shape as a real-world STATIC_SENSOR_CONFIG_REGISTRY — no titles here.
+const PERSISTED_REGISTRY: PersistedLayoutRegistry<PersistedViewId> = {
+  alpha: { component: AlphaView },
+  beta: { component: BetaView, toolbar: BetaToolbar },
+  gamma: { component: GammaView, wrapper: BorderProvider },
+};
+
+const PERSISTED_TITLES: Record<PersistedViewId, string> = {
+  alpha: 'Alpha',
+  beta: 'Beta',
+  gamma: 'Gamma',
+};
+
+const PERSISTED_STORAGE_KEY = 'react-mosaic-demo-layout';
+
+function PersistedDemo() {
+  // Remounting on reset lets MosaicLayout re-read initialNode (it reads it once).
+  const [instance, setInstance] = useState(0);
+  return <PersistedDemoInner key={instance} onReset={() => setInstance((i) => i + 1)} />;
+}
+
+function PersistedDemoInner({ onReset }: { onReset: () => void }) {
+  const {
+    panels,
+    initialNode,
+    onNodeChange,
+    saveLayout,
+    addPanel,
+    removePanel,
+    hasPanel,
+    resetLayout,
+  } = usePersistedLayout<PersistedViewId>({
+    storageKey: PERSISTED_STORAGE_KEY,
+    registry: PERSISTED_REGISTRY,
+    titles: PERSISTED_TITLES,
+  });
+
+  const [saved, setSaved] = useState(false);
+  const handleSave = () => {
+    saveLayout();
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 1500);
+  };
+
+  const handleReset = () => {
+    resetLayout();
+    onReset();
+  };
+
+  const ids: PersistedViewId[] = ['alpha', 'beta', 'gamma'];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '0.75rem' }}>
+      <div className="demo-controls">
+        <button type="button" onClick={handleSave} className="demo-btn demo-btn-primary">
+          {saved ? '✓ Saved' : '💾 Save layout'}
+        </button>
+        <button type="button" onClick={handleReset} className="demo-btn demo-btn-danger">
+          ↺ Reset
+        </button>
+        {ids.map((id) => (
+          <button
+            key={id}
+            type="button"
+            className="demo-btn"
+            onClick={() => (hasPanel(id) ? removePanel(id) : addPanel(id))}
+          >
+            {hasPanel(id) ? `− ${PERSISTED_TITLES[id]}` : `+ ${PERSISTED_TITLES[id]}`}
+          </button>
+        ))}
+      </div>
+
+      <div className="demo-code-hint">
+        <span className="demo-code-comment">
+          {'// Arrange & resize, hit Save, then reload the page — layout is restored.'}
+        </span>
+      </div>
+
+      <div className="demo-mosaic-area">
+        <MosaicLayout<PersistedViewId>
+          panels={panels}
+          initialNode={initialNode}
+          onNodeChange={onNodeChange}
+          zeroStateView={
+            <div className="demo-zero-state">
+              <p>Add a panel, arrange it, then Save layout</p>
+            </div>
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Root app with tab switcher
 // ---------------------------------------------------------------------------
 
-type Tab = 'high' | 'low';
+type Tab = 'high' | 'low' | 'persisted';
 
 export const DemoApp = () => {
   const [activeTab, setActiveTab] = useState<Tab>('high');
@@ -245,11 +377,16 @@ export const DemoApp = () => {
           <TabButton active={activeTab === 'low'} onClick={() => setActiveTab('low')}>
             🔧 Low-level API
           </TabButton>
+          <TabButton active={activeTab === 'persisted'} onClick={() => setActiveTab('persisted')}>
+            💾 Persisted layout
+          </TabButton>
         </div>
       </div>
 
       <div className="demo-content">
-        {activeTab === 'high' ? <HighLevelDemo /> : <LowLevelDemo />}
+        {activeTab === 'high' && <HighLevelDemo />}
+        {activeTab === 'low' && <LowLevelDemo />}
+        {activeTab === 'persisted' && <PersistedDemo />}
       </div>
     </div>
   );

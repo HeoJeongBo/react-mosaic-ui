@@ -67,6 +67,16 @@ describe('MosaicWindow', () => {
       expect(screen.getByTitle('Close')).toBeInTheDocument();
     });
 
+    it('renders Close button when closable is explicitly true', () => {
+      renderWindow({ closable: true });
+      expect(screen.getByTitle('Close')).toBeInTheDocument();
+    });
+
+    it('hides Close button when closable is false', () => {
+      renderWindow({ closable: false });
+      expect(screen.queryByTitle('Close')).not.toBeInTheDocument();
+    });
+
     it('renders Split, Replace, Expand buttons when createNode is provided', () => {
       renderWindow({ createNode: () => 'new' });
       expect(screen.getByTitle('Split')).toBeInTheDocument();
@@ -308,48 +318,58 @@ describe('MosaicWindow', () => {
     });
 
     it('re-renders when a new prop key is added (next has key prev does not)', () => {
-      let renderCount = 0;
-      const CountingImpl = (props: React.ComponentProps<typeof MosaicWindow<string>>) => {
-        renderCount++;
-        return (
-          <MosaicWindow {...props}>
-            <div>child</div>
-          </MosaicWindow>
-        );
+      // children and the context value must be referentially stable so the memo
+      // comparator's first loop (over prev keys) passes and reaches the second
+      // loop (over next keys) where the newly-added `toolbarControls` key — absent
+      // in prev — triggers `return false` (line 177).
+      const stableChild = <div>child</div>;
+      const ctxValue = {
+        mosaicActions: mockMosaicActions,
+        mosaicId: 'test',
+        renderTile: () => <></>,
       };
-      const Counting = React.memo(CountingImpl);
 
       const { rerender } = render(
-        <MosaicContext.Provider
-          value={{ mosaicActions: mockMosaicActions, mosaicId: 'test', renderTile: () => <></> }}
-        >
-          <Counting title="Test" path={['first']} />
+        <MosaicContext.Provider value={ctxValue}>
+          <MosaicWindow title="Test" path={['first']}>
+            {stableChild}
+          </MosaicWindow>
         </MosaicContext.Provider>,
       );
+      expect(screen.queryByTestId('extra-tc')).not.toBeInTheDocument();
 
-      const before = renderCount;
-
-      // Add createNode prop that was not present before — next has key that prev doesn't
       rerender(
-        <MosaicContext.Provider
-          value={{ mosaicActions: mockMosaicActions, mosaicId: 'test', renderTile: () => <></> }}
-        >
-          <Counting title="Test" path={['first']} createNode={() => 'new'} />
+        <MosaicContext.Provider value={ctxValue}>
+          <MosaicWindow
+            title="Test"
+            path={['first']}
+            toolbarControls={<span data-testid="extra-tc">tc</span>}
+          >
+            {stableChild}
+          </MosaicWindow>
         </MosaicContext.Provider>,
       );
 
-      expect(renderCount).toBeGreaterThan(before);
+      // Re-rendered with the new prop → the toolbar control is now shown.
+      expect(screen.getByTestId('extra-tc')).toBeInTheDocument();
     });
 
     it('toolbar re-renders when createNode added (new key in next not in prev)', () => {
       // MosaicWindowToolbar memo has a "for key of Object.keys(next)" loop that returns false
-      // when next has a key that prev does not have. This covers that branch.
+      // when next has a key that prev does not have. Stable children + context value keep the
+      // parent MosaicWindow from remounting, so the toolbar memo comparator actually runs and
+      // reaches that loop when `createNode` (and thus a new toolbar prop) appears.
+      const stableChild = <div>child</div>;
+      const ctxValue = {
+        mosaicActions: mockMosaicActions,
+        mosaicId: 'test',
+        renderTile: () => <></>,
+      };
+
       const { rerender } = render(
-        <MosaicContext.Provider
-          value={{ mosaicActions: mockMosaicActions, mosaicId: 'test', renderTile: () => <></> }}
-        >
+        <MosaicContext.Provider value={ctxValue}>
           <MosaicWindow title="Test" path={['first']}>
-            <div>child</div>
+            {stableChild}
           </MosaicWindow>
         </MosaicContext.Provider>,
       );
@@ -359,11 +379,9 @@ describe('MosaicWindow', () => {
 
       // Rerender with createNode — toolbar now gets a new prop it didn't have before
       rerender(
-        <MosaicContext.Provider
-          value={{ mosaicActions: mockMosaicActions, mosaicId: 'test', renderTile: () => <></> }}
-        >
+        <MosaicContext.Provider value={ctxValue}>
           <MosaicWindow title="Test" path={['first']} createNode={() => 'new'}>
-            <div>child</div>
+            {stableChild}
           </MosaicWindow>
         </MosaicContext.Provider>,
       );

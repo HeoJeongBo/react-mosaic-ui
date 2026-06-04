@@ -1,6 +1,7 @@
 export {
   isParent,
   getLeaves,
+  pruneTree,
   getNodeAtPath,
   getAndAssertNodeAtPathExists,
   createBalancedTreeFromLeaves,

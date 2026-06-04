@@ -21,8 +21,15 @@ export type { SplitProps } from './features/resize';
 export { MosaicDropTarget } from './features/drag-drop';
 export type { MosaicDropTargetProps } from './features/drag-drop';
 
-export { MosaicLayout, useMosaicPanels } from './features/panel-manager';
-export type { GetDirectionFn, MosaicLayoutProps } from './features/panel-manager';
+export { MosaicLayout, useMosaicPanels, usePersistedLayout } from './features/panel-manager';
+export type {
+  GetDirectionFn,
+  MosaicLayoutProps,
+  PersistedPanelEntry,
+  PersistedLayoutRegistry,
+  UsePersistedLayoutOptions,
+  UsePersistedLayoutResult,
+} from './features/panel-manager';
 
 // Types
 export type {
@@ -54,6 +61,7 @@ export { MosaicDropTargetPosition, Corner } from './shared/types';
 export {
   isParent,
   getLeaves,
+  pruneTree,
   getNodeAtPath,
   getAndAssertNodeAtPathExists,
   createBalancedTreeFromLeaves,
