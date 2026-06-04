@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.3.4...v2.4.0) (2026-06-04)
+
+### Features
+
+* add layout persist ([90868c3](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/90868c34ed6a57b1b2bcc5fcd5b98313f634bc83))
+* add mds ([6ee8f51](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/6ee8f511ea8ad077d43f469012a36536273bd27a))
+
 ## [2.3.4](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.3.3...v2.3.4) (2026-05-28)
 
 ### Features
