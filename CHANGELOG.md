@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.2](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.4.1...v2.4.2) (2026-06-04)
+
+### Bug Fixes
+
+* strict mode issue ([e9a1e66](https://github-personal/HeoJeongBo/react-mosaic-ui/commit/e9a1e662444ae5f952c7a1166d21d3ad6741afa5))
+
 ## [2.4.1](https://github-personal/HeoJeongBo/react-mosaic-ui/compare/v2.4.0...v2.4.1) (2026-06-04)
 
 ### Bug Fixes
