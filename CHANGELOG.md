@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.5.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v2.4.2...v2.5.0) (2026-06-05)
+## [2.6.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v2.4.2...v2.6.0) (2026-06-05)
 
 ### Features
 
