@@ -82,4 +82,6 @@ export interface MosaicWindowActions {
  */
 export interface MosaicWindowContextValue {
   mosaicWindowActions: MosaicWindowActions;
+  /** The leaf ID of this window in the mosaic tree. Provided by MosaicLayout; undefined when MosaicWindow is used standalone. */
+  panelId?: MosaicKey;
 }

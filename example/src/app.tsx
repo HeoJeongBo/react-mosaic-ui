@@ -8,6 +8,7 @@ import {
   createBalancedTreeFromLeaves,
   getLeaves,
   useMosaicPanels,
+  usePanelState,
   usePersistedLayout,
 } from '@heojeongbo/react-mosaic-ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -228,7 +229,7 @@ function LowLevelDemo() {
 // Persisted layout demo — usePersistedLayout (registry + localStorage)
 // ---------------------------------------------------------------------------
 
-type PersistedViewId = 'alpha' | 'beta' | 'gamma' | 'measured';
+type PersistedViewId = 'alpha' | 'beta' | 'gamma' | 'measured' | 'todo';
 
 function PersistedView({ label, color }: { label: string; color: string }) {
   return (
@@ -281,6 +282,38 @@ function MeasuredView() {
   );
 }
 
+const TODO_ITEMS = ['Read docs', 'Try drag & drop', 'Save layout', 'Reload page'];
+
+function TodoView() {
+  const [checked, setChecked] = usePanelState<Record<string, boolean>>({
+    defaultState: {},
+    version: 1,
+  });
+
+  const toggle = (item: string) => {
+    setChecked((prev) => ({ ...prev, [item]: !prev[item] }));
+  };
+
+  return (
+    <div className="panel-content" style={{ alignItems: 'flex-start', gap: '0.5rem' }}>
+      <p className="panel-title" style={{ marginBottom: '0.25rem' }}>
+        Check items — state is saved with the layout
+      </p>
+      {TODO_ITEMS.map((item) => (
+        <label
+          key={item}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+        >
+          <input type="checkbox" checked={!!checked[item]} onChange={() => toggle(item)} />
+          <span style={{ textDecoration: checked[item] ? 'line-through' : 'none', opacity: checked[item] ? 0.5 : 1 }}>
+            {item}
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 function BetaToolbar() {
   return (
     <div className="demo-window-toolbar">
@@ -306,6 +339,7 @@ const PERSISTED_REGISTRY: PersistedLayoutRegistry<PersistedViewId> = {
   beta: { component: BetaView, toolbar: BetaToolbar },
   gamma: { component: GammaView, wrapper: BorderProvider },
   measured: { component: MeasuredView },
+  todo: { component: TodoView },
 };
 
 const PERSISTED_TITLES: Record<PersistedViewId, string> = {
@@ -313,17 +347,14 @@ const PERSISTED_TITLES: Record<PersistedViewId, string> = {
   beta: 'Beta',
   gamma: 'Gamma',
   measured: 'Measured',
+  todo: 'Todo (panel state)',
 };
 
 const PERSISTED_STORAGE_KEY = 'react-mosaic-demo-layout';
 
 function PersistedDemo() {
-  // Remounting on reset lets MosaicLayout re-read initialNode (it reads it once).
-  const [instance, setInstance] = useState(0);
-  return <PersistedDemoInner key={instance} onReset={() => setInstance((i) => i + 1)} />;
-}
+  const [savedFlash, setSavedFlash] = useState(false);
 
-function PersistedDemoInner({ onReset }: { onReset: () => void }) {
   const {
     panels,
     initialNode,
@@ -331,35 +362,37 @@ function PersistedDemoInner({ onReset }: { onReset: () => void }) {
     saveLayout,
     addPanel,
     removePanel,
-    hasPanel,
+    activeIds,
+    isDirty,
     resetLayout,
+    PanelStateProvider,
   } = usePersistedLayout<PersistedViewId>({
     storageKey: PERSISTED_STORAGE_KEY,
     registry: PERSISTED_REGISTRY,
     titles: PERSISTED_TITLES,
+    onSave: () => {
+      setSavedFlash(true);
+      window.setTimeout(() => setSavedFlash(false), 1500);
+    },
+    onPanelOpen: (id) => console.log('[demo] panel opened:', id),
+    onPanelClose: (id) => console.log('[demo] panel closed:', id),
+    onReset: () => console.log('[demo] layout reset'),
   });
 
-  const [saved, setSaved] = useState(false);
-  const handleSave = () => {
-    saveLayout();
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 1500);
-  };
-
-  const handleReset = () => {
-    resetLayout();
-    onReset();
-  };
-
-  const ids: PersistedViewId[] = ['alpha', 'beta', 'gamma', 'measured'];
+  const ids: PersistedViewId[] = ['alpha', 'beta', 'gamma', 'measured', 'todo'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '0.75rem' }}>
       <div className="demo-controls">
-        <button type="button" onClick={handleSave} className="demo-btn demo-btn-primary">
-          {saved ? '✓ Saved' : '💾 Save layout'}
+        <button
+          type="button"
+          onClick={saveLayout}
+          disabled={!isDirty}
+          className="demo-btn demo-btn-primary"
+        >
+          {savedFlash ? '✓ Saved' : isDirty ? '💾 Save layout' : '💾 Up to date'}
         </button>
-        <button type="button" onClick={handleReset} className="demo-btn demo-btn-danger">
+        <button type="button" onClick={resetLayout} className="demo-btn demo-btn-danger">
           ↺ Reset
         </button>
         {ids.map((id) => (
@@ -367,30 +400,32 @@ function PersistedDemoInner({ onReset }: { onReset: () => void }) {
             key={id}
             type="button"
             className="demo-btn"
-            onClick={() => (hasPanel(id) ? removePanel(id) : addPanel(id))}
+            onClick={() => (activeIds.has(id) ? removePanel(id) : addPanel(id))}
           >
-            {hasPanel(id) ? `− ${PERSISTED_TITLES[id]}` : `+ ${PERSISTED_TITLES[id]}`}
+            {activeIds.has(id) ? `− ${PERSISTED_TITLES[id]}` : `+ ${PERSISTED_TITLES[id]}`}
           </button>
         ))}
       </div>
 
       <div className="demo-code-hint">
         <span className="demo-code-comment">
-          {'// Arrange & resize, hit Save, then reload the page — layout is restored.'}
+          {'// Check items in "Todo" panel, Save layout, then reload — checkbox state is restored.'}
         </span>
       </div>
 
       <div className="demo-mosaic-area">
-        <MosaicLayout<PersistedViewId>
-          panels={panels}
-          initialNode={initialNode}
-          onNodeChange={onNodeChange}
-          zeroStateView={
-            <div className="demo-zero-state">
-              <p>Add a panel, arrange it, then Save layout</p>
-            </div>
-          }
-        />
+        <PanelStateProvider>
+          <MosaicLayout<PersistedViewId>
+            panels={panels}
+            initialNode={initialNode}
+            onNodeChange={onNodeChange}
+            zeroStateView={
+              <div className="demo-zero-state">
+                <p>Add a panel, arrange it, then Save layout</p>
+              </div>
+            }
+          />
+        </PanelStateProvider>
       </div>
     </div>
   );

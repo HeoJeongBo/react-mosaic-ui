@@ -128,7 +128,7 @@ describe('usePersistedLayout', () => {
     };
     act(() => result.current.onNodeChange(newTree));
     act(() => result.current.saveLayout());
-    expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ version: 1, tree: newTree });
+    expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ version: 2, tree: newTree, panelStates: {} });
   });
 
   it('onNodeChange alone does not write storage (manual save only)', () => {
@@ -388,7 +388,7 @@ describe('usePersistedLayout', () => {
         version: number;
         tree: MosaicNode<ViewId>;
       };
-      expect(stored.version).toBe(1);
+      expect(stored.version).toBe(2);
       // Before the fix this is just ['alpha'] (stale default) — must be both ids now.
       expect(new Set(getLeaves(stored.tree))).toEqual(new Set(['alpha', 'beta']));
 
@@ -397,6 +397,183 @@ describe('usePersistedLayout', () => {
       cleanup();
       render(<Harness />);
       expect(new Set(getLeaves(api.initialNode))).toEqual(new Set(['alpha', 'beta']));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Callbacks
+  // ---------------------------------------------------------------------------
+
+  describe('callbacks', () => {
+    it('onSave is called after saveLayout with the current tree', () => {
+      const onSave = vi.fn();
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, onSave }),
+      );
+      const tree: MosaicNode<ViewId> = { direction: 'row', first: 'alpha', second: 'beta', splitPercentage: 50 };
+      act(() => result.current.onNodeChange(tree));
+      act(() => result.current.saveLayout());
+      expect(onSave).toHaveBeenCalledOnce();
+      expect(onSave).toHaveBeenCalledWith(tree);
+    });
+
+    it('onReset is called after resetLayout with the new default tree', () => {
+      const onReset = vi.fn();
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha', 'beta'], onReset }),
+      );
+      act(() => result.current.resetLayout());
+      expect(onReset).toHaveBeenCalledOnce();
+      const arg = onReset.mock.calls[0][0] as MosaicNode<ViewId> | null;
+      expect(new Set(getLeaves(arg))).toEqual(new Set(['alpha', 'beta']));
+    });
+
+    it('onPanelOpen is called when addPanel adds a new panel', () => {
+      const onPanelOpen = vi.fn();
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha'], onPanelOpen }),
+      );
+      act(() => result.current.addPanel('beta'));
+      expect(onPanelOpen).toHaveBeenCalledOnce();
+      expect(onPanelOpen).toHaveBeenCalledWith('beta');
+    });
+
+    it('onPanelOpen is NOT called when addPanel is a no-op (already visible)', () => {
+      const onPanelOpen = vi.fn();
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha'], onPanelOpen }),
+      );
+      act(() => result.current.addPanel('alpha'));
+      expect(onPanelOpen).not.toHaveBeenCalled();
+    });
+
+    it('onPanelClose is called when removePanel removes a visible panel', () => {
+      const onPanelClose = vi.fn();
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha', 'beta'], onPanelClose }),
+      );
+      act(() => result.current.removePanel('beta'));
+      expect(onPanelClose).toHaveBeenCalledOnce();
+      expect(onPanelClose).toHaveBeenCalledWith('beta');
+    });
+
+    it('onPanelClose is NOT called when removePanel is a no-op (not visible)', () => {
+      const onPanelClose = vi.fn();
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha'], onPanelClose }),
+      );
+      act(() => result.current.removePanel('beta'));
+      expect(onPanelClose).not.toHaveBeenCalled();
+    });
+
+    it('onNodeChange option is called whenever the tree changes', () => {
+      const onNodeChange = vi.fn();
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, onNodeChange }),
+      );
+      const tree: MosaicNode<ViewId> = 'alpha';
+      act(() => result.current.onNodeChange(tree));
+      expect(onNodeChange).toHaveBeenCalledWith(tree);
+    });
+
+    it('callbacks use the latest function reference without re-render', () => {
+      let capturedTree: MosaicNode<ViewId> | null | undefined;
+      const onSave = vi.fn((t: MosaicNode<ViewId> | null) => { capturedTree = t; });
+      const { result, rerender } = renderHook(
+        (cb: typeof onSave) => usePersistedLayout({ storageKey: KEY, registry: REGISTRY, onSave: cb }),
+        { initialProps: onSave },
+      );
+      const newOnSave = vi.fn((t: MosaicNode<ViewId> | null) => { capturedTree = t; });
+      rerender(newOnSave);
+      act(() => result.current.saveLayout());
+      expect(onSave).not.toHaveBeenCalled();
+      expect(newOnSave).toHaveBeenCalledOnce();
+      void capturedTree;
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // isDirty
+  // ---------------------------------------------------------------------------
+
+  describe('isDirty', () => {
+    it('starts as false', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY }),
+      );
+      expect(result.current.isDirty).toBe(false);
+    });
+
+    it('becomes true after onNodeChange', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY }),
+      );
+      act(() => result.current.onNodeChange('alpha'));
+      expect(result.current.isDirty).toBe(true);
+    });
+
+    it('resets to false after saveLayout', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY }),
+      );
+      act(() => result.current.onNodeChange('alpha'));
+      act(() => result.current.saveLayout());
+      expect(result.current.isDirty).toBe(false);
+    });
+
+    it('resets to false after resetLayout', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY }),
+      );
+      act(() => result.current.onNodeChange('alpha'));
+      act(() => result.current.resetLayout());
+      expect(result.current.isDirty).toBe(false);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // activeIds
+  // ---------------------------------------------------------------------------
+
+  describe('activeIds', () => {
+    it('reflects the initial panel set', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha', 'beta'] }),
+      );
+      expect(result.current.activeIds).toEqual(new Set(['alpha', 'beta']));
+    });
+
+    it('updates when addPanel is called', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha'] }),
+      );
+      act(() => result.current.addPanel('beta'));
+      expect(result.current.activeIds.has('beta')).toBe(true);
+    });
+
+    it('updates when removePanel is called', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha', 'beta'] }),
+      );
+      act(() => result.current.removePanel('alpha'));
+      expect(result.current.activeIds.has('alpha')).toBe(false);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // resetLayout without remount
+  // ---------------------------------------------------------------------------
+
+  describe('resetLayout without remount', () => {
+    it('updates initialNode so MosaicLayout can re-init without a key remount', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha'] }),
+      );
+      // Change the tree then reset
+      act(() => result.current.onNodeChange('beta' as ViewId));
+      act(() => result.current.resetLayout());
+      // initialNode should now reflect the default (alpha only)
+      expect(new Set(getLeaves(result.current.initialNode))).toEqual(new Set(['alpha']));
     });
   });
 });

@@ -74,6 +74,7 @@ function StablePanelList<TId extends MosaicKey>({
           <MosaicWindow<TId>
             title={panel.title}
             path={path}
+            panelId={p.id}
             {...closableProps}
             renderToolbar={({ dragHandle }) => (
               <div
@@ -87,7 +88,7 @@ function StablePanelList<TId extends MosaicKey>({
             {panel.content}
           </MosaicWindow>
         ) : (
-          <MosaicWindow<TId> title={panel.title} path={path} {...closableProps}>
+          <MosaicWindow<TId> title={panel.title} path={path} panelId={p.id} {...closableProps}>
             {panel.content}
           </MosaicWindow>
         );
@@ -148,6 +149,18 @@ export function MosaicLayout<TId extends MosaicKey = string>({
   onPanelCloseRef.current = onPanelClose;
   const onNodeChangeRef = useRef(onNodeChange);
   onNodeChangeRef.current = onNodeChange;
+
+  // When initialNode changes (e.g. after resetLayout()), update the live tree so the
+  // consumer does not need to remount MosaicLayout with a new `key`.
+  const prevInitialNodeRef = useRef(initialNode);
+  useEffect(() => {
+    if (initialNode !== prevInitialNodeRef.current) {
+      prevInitialNodeRef.current = initialNode;
+      const next = initialNode ?? null;
+      setCurrentNode(next);
+      onNodeChangeRef.current?.(next);
+    }
+  }, [initialNode]);
 
   useEffect(() => {
     const prevIds = prevIdsRef.current;

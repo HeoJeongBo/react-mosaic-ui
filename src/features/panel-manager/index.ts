@@ -1,4 +1,4 @@
-export { MosaicLayout, useMosaicPanels, usePersistedLayout } from './ui';
+export { MosaicLayout, useMosaicPanels, usePersistedLayout, usePanelState } from './ui';
 export type {
   GetDirectionFn,
   MosaicLayoutProps,
@@ -6,4 +6,5 @@ export type {
   PersistedLayoutRegistry,
   UsePersistedLayoutOptions,
   UsePersistedLayoutResult,
+  UsePanelStateOptions,
 } from './ui';

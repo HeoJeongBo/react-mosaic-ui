@@ -8,3 +8,5 @@ export type {
   UsePersistedLayoutOptions,
   UsePersistedLayoutResult,
 } from './use-persisted-layout';
+export { usePanelState } from './use-panel-state';
+export type { UsePanelStateOptions } from './use-panel-state';

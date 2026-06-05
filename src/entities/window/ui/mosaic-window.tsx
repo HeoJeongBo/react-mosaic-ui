@@ -30,6 +30,8 @@ export interface MosaicWindowProps<T extends MosaicKey> {
   onDragEnd?: (type: 'drop' | 'reset') => void;
   className?: string;
   closable?: boolean;
+  /** Leaf ID of this window in the mosaic tree. Supplied by MosaicLayout for panel state persistence. */
+  panelId?: T;
 }
 
 export interface MosaicWindowToolbarProps<T extends MosaicKey> {
@@ -55,6 +57,7 @@ const MosaicWindowImpl = <T extends MosaicKey>({
   onDragEnd,
   className,
   closable,
+  panelId,
 }: MosaicWindowProps<T>) => {
   const { mosaicActions, mosaicId } = useContext(MosaicContext);
 
@@ -131,8 +134,9 @@ const MosaicWindowImpl = <T extends MosaicKey>({
   const contextValue = useMemo(
     () => ({
       mosaicWindowActions: windowActions,
+      ...(panelId !== undefined && { panelId }),
     }),
-    [windowActions],
+    [windowActions, panelId],
   );
 
   const toolbarProps: MosaicWindowToolbarProps<T> = {
