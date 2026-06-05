@@ -128,7 +128,11 @@ describe('usePersistedLayout', () => {
     };
     act(() => result.current.onNodeChange(newTree));
     act(() => result.current.saveLayout());
-    expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ version: 2, tree: newTree, panelStates: {} });
+    expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({
+      version: 2,
+      tree: newTree,
+      panelStates: {},
+    });
   });
 
   it('onNodeChange alone does not write storage (manual save only)', () => {
@@ -410,7 +414,12 @@ describe('usePersistedLayout', () => {
       const { result } = renderHook(() =>
         usePersistedLayout({ storageKey: KEY, registry: REGISTRY, onSave }),
       );
-      const tree: MosaicNode<ViewId> = { direction: 'row', first: 'alpha', second: 'beta', splitPercentage: 50 };
+      const tree: MosaicNode<ViewId> = {
+        direction: 'row',
+        first: 'alpha',
+        second: 'beta',
+        splitPercentage: 50,
+      };
       act(() => result.current.onNodeChange(tree));
       act(() => result.current.saveLayout());
       expect(onSave).toHaveBeenCalledOnce();
@@ -420,7 +429,12 @@ describe('usePersistedLayout', () => {
     it('onReset is called after resetLayout with the new default tree', () => {
       const onReset = vi.fn();
       const { result } = renderHook(() =>
-        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha', 'beta'], onReset }),
+        usePersistedLayout({
+          storageKey: KEY,
+          registry: REGISTRY,
+          defaultPanelIds: ['alpha', 'beta'],
+          onReset,
+        }),
       );
       act(() => result.current.resetLayout());
       expect(onReset).toHaveBeenCalledOnce();
@@ -431,7 +445,12 @@ describe('usePersistedLayout', () => {
     it('onPanelOpen is called when addPanel adds a new panel', () => {
       const onPanelOpen = vi.fn();
       const { result } = renderHook(() =>
-        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha'], onPanelOpen }),
+        usePersistedLayout({
+          storageKey: KEY,
+          registry: REGISTRY,
+          defaultPanelIds: ['alpha'],
+          onPanelOpen,
+        }),
       );
       act(() => result.current.addPanel('beta'));
       expect(onPanelOpen).toHaveBeenCalledOnce();
@@ -441,7 +460,12 @@ describe('usePersistedLayout', () => {
     it('onPanelOpen is NOT called when addPanel is a no-op (already visible)', () => {
       const onPanelOpen = vi.fn();
       const { result } = renderHook(() =>
-        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha'], onPanelOpen }),
+        usePersistedLayout({
+          storageKey: KEY,
+          registry: REGISTRY,
+          defaultPanelIds: ['alpha'],
+          onPanelOpen,
+        }),
       );
       act(() => result.current.addPanel('alpha'));
       expect(onPanelOpen).not.toHaveBeenCalled();
@@ -450,7 +474,12 @@ describe('usePersistedLayout', () => {
     it('onPanelClose is called when removePanel removes a visible panel', () => {
       const onPanelClose = vi.fn();
       const { result } = renderHook(() =>
-        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha', 'beta'], onPanelClose }),
+        usePersistedLayout({
+          storageKey: KEY,
+          registry: REGISTRY,
+          defaultPanelIds: ['alpha', 'beta'],
+          onPanelClose,
+        }),
       );
       act(() => result.current.removePanel('beta'));
       expect(onPanelClose).toHaveBeenCalledOnce();
@@ -460,7 +489,12 @@ describe('usePersistedLayout', () => {
     it('onPanelClose is NOT called when removePanel is a no-op (not visible)', () => {
       const onPanelClose = vi.fn();
       const { result } = renderHook(() =>
-        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha'], onPanelClose }),
+        usePersistedLayout({
+          storageKey: KEY,
+          registry: REGISTRY,
+          defaultPanelIds: ['alpha'],
+          onPanelClose,
+        }),
       );
       act(() => result.current.removePanel('beta'));
       expect(onPanelClose).not.toHaveBeenCalled();
@@ -478,12 +512,17 @@ describe('usePersistedLayout', () => {
 
     it('callbacks use the latest function reference without re-render', () => {
       let capturedTree: MosaicNode<ViewId> | null | undefined;
-      const onSave = vi.fn((t: MosaicNode<ViewId> | null) => { capturedTree = t; });
+      const onSave = vi.fn((t: MosaicNode<ViewId> | null) => {
+        capturedTree = t;
+      });
       const { result, rerender } = renderHook(
-        (cb: typeof onSave) => usePersistedLayout({ storageKey: KEY, registry: REGISTRY, onSave: cb }),
+        (cb: typeof onSave) =>
+          usePersistedLayout({ storageKey: KEY, registry: REGISTRY, onSave: cb }),
         { initialProps: onSave },
       );
-      const newOnSave = vi.fn((t: MosaicNode<ViewId> | null) => { capturedTree = t; });
+      const newOnSave = vi.fn((t: MosaicNode<ViewId> | null) => {
+        capturedTree = t;
+      });
       rerender(newOnSave);
       act(() => result.current.saveLayout());
       expect(onSave).not.toHaveBeenCalled();
@@ -538,7 +577,11 @@ describe('usePersistedLayout', () => {
   describe('activeIds', () => {
     it('reflects the initial panel set', () => {
       const { result } = renderHook(() =>
-        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha', 'beta'] }),
+        usePersistedLayout({
+          storageKey: KEY,
+          registry: REGISTRY,
+          defaultPanelIds: ['alpha', 'beta'],
+        }),
       );
       expect(result.current.activeIds).toEqual(new Set(['alpha', 'beta']));
     });
@@ -553,7 +596,11 @@ describe('usePersistedLayout', () => {
 
     it('updates when removePanel is called', () => {
       const { result } = renderHook(() =>
-        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, defaultPanelIds: ['alpha', 'beta'] }),
+        usePersistedLayout({
+          storageKey: KEY,
+          registry: REGISTRY,
+          defaultPanelIds: ['alpha', 'beta'],
+        }),
       );
       act(() => result.current.removePanel('alpha'));
       expect(result.current.activeIds.has('alpha')).toBe(false);

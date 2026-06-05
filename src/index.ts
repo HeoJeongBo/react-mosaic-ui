@@ -21,7 +21,12 @@ export type { SplitProps } from './features/resize';
 export { MosaicDropTarget } from './features/drag-drop';
 export type { MosaicDropTargetProps } from './features/drag-drop';
 
-export { MosaicLayout, useMosaicPanels, usePersistedLayout, usePanelState } from './features/panel-manager';
+export {
+  MosaicLayout,
+  useMosaicPanels,
+  usePersistedLayout,
+  usePanelState,
+} from './features/panel-manager';
 export type {
   GetDirectionFn,
   MosaicLayoutProps,

@@ -305,7 +305,12 @@ function TodoView() {
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
         >
           <input type="checkbox" checked={!!checked[item]} onChange={() => toggle(item)} />
-          <span style={{ textDecoration: checked[item] ? 'line-through' : 'none', opacity: checked[item] ? 0.5 : 1 }}>
+          <span
+            style={{
+              textDecoration: checked[item] ? 'line-through' : 'none',
+              opacity: checked[item] ? 0.5 : 1,
+            }}
+          >
             {item}
           </span>
         </label>
