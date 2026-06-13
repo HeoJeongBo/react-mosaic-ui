@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v2.6.0...v4.0.0) (2026-06-13)
+
+### Features
+
+* improve dx ([09bf47a](https://github.com/HeoJeongBo/react-mosaic-ui/commit/09bf47a9ba5bb9bcc066aab2495f5fe48bbfe72e))
+
 ## [3.0.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v2.6.0...v3.0.0)
 
 ### ⚠ BREAKING CHANGES
