@@ -273,22 +273,17 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
       <MosaicContext.Provider value={contextValue}>
         <div
           ref={containerRef}
-          className={classNames(className, 'rm-w-full rm-h-full rm-relative')}
+          className={classNames(
+            'react-mosaic',
+            className !== 'react-mosaic' ? className : undefined,
+          )}
           onDragOver={preventDefaultHandler}
           onDrop={preventDefaultHandler}
         >
           {currentValue === null ? (
-            (zeroStateView ?? (
-              <div className="rm-flex rm-items-center rm-justify-center rm-w-full rm-h-full rm-text-gray-500">
-                Drop a window here
-              </div>
-            ))
+            (zeroStateView ?? <div className="rm-mosaic-zero-state">Drop a window here</div>)
           ) : (
-            <MosaicRoot
-              root={currentValue}
-              {...(resize !== undefined && { resize })}
-              className="rm-w-full rm-h-full"
-            />
+            <MosaicRoot root={currentValue} {...(resize !== undefined && { resize })} />
           )}
           {children}
         </div>

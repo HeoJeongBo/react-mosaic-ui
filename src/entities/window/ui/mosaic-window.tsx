@@ -30,6 +30,12 @@ export interface MosaicWindowProps<T extends MosaicKey> {
   onDragEnd?: (type: 'drop' | 'reset') => void;
   className?: string;
   closable?: boolean;
+  /** When true, render no toolbar at all (no chrome, full bleed). */
+  hideToolbar?: boolean;
+  /** Extra class applied to the window body (alongside .rm-mosaic-window-body). */
+  bodyClassName?: string;
+  /** Inline padding override for the window body. Wins over CSS without !important. */
+  bodyPadding?: string | number;
   /** Leaf ID of this window in the mosaic tree. Supplied by MosaicLayout for panel state persistence. */
   panelId?: T;
 }
@@ -57,6 +63,9 @@ const MosaicWindowImpl = <T extends MosaicKey>({
   onDragEnd,
   className,
   closable,
+  hideToolbar,
+  bodyClassName,
+  bodyPadding,
   panelId,
 }: MosaicWindowProps<T>) => {
   const { mosaicActions, mosaicId } = useContext(MosaicContext);
@@ -151,19 +160,22 @@ const MosaicWindowImpl = <T extends MosaicKey>({
 
   const defaultToolbar = <MosaicWindowToolbar {...toolbarProps} />;
 
-  const toolbar = renderToolbar ? renderToolbar(toolbarProps, defaultToolbar) : defaultToolbar;
+  const toolbar = hideToolbar
+    ? null
+    : renderToolbar
+      ? renderToolbar(toolbarProps, defaultToolbar)
+      : defaultToolbar;
 
   return (
     <MosaicWindowContext.Provider value={contextValue}>
-      <div
-        className={classNames(
-          'rm-mosaic-window',
-          'rm-flex rm-flex-col rm-h-full rm-bg-mosaic-window rm-rounded rm-shadow',
-          className,
-        )}
-      >
+      <div className={classNames('rm-mosaic-window', className)}>
         {toolbar}
-        <div className="rm-mosaic-window-body rm-flex-1 rm-overflow-auto rm-p-4">{children}</div>
+        <div
+          className={classNames('rm-mosaic-window-body', bodyClassName)}
+          style={bodyPadding !== undefined ? { padding: bodyPadding } : undefined}
+        >
+          {children}
+        </div>
       </div>
     </MosaicWindowContext.Provider>
   );
@@ -233,20 +245,17 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
 
   return (
     <>
-      <div className="rm-mosaic-window-toolbar rm-flex rm-items-center rm-justify-between rm-px-4 rm-py-2 rm-bg-mosaic-toolbar rm-border-b rm-border-mosaic-border rm-select-none">
-        <div
-          ref={dragHandle.ref}
-          className="rm-mosaic-window-title rm-font-medium rm-text-sm rm-cursor-grab active:rm-cursor-grabbing"
-        >
+      <div className="rm-mosaic-window-toolbar">
+        <div ref={dragHandle.ref} className="rm-mosaic-window-title">
           {title}
         </div>
-        <div className="rm-mosaic-window-controls rm-flex rm-gap-1 rm-items-center">
+        <div className="rm-mosaic-window-controls">
           {toolbarControls}
           {createNode && (
             <>
               <button
                 type="button"
-                className="rm-mosaic-button rm-px-2 rm-py-1 rm-text-xs rm-rounded hover:rm-bg-gray-200 rm-transition"
+                className="rm-mosaic-button"
                 onClick={handleReplace}
                 title="Replace"
               >
@@ -254,7 +263,7 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
               </button>
               <button
                 type="button"
-                className="rm-mosaic-button rm-px-2 rm-py-1 rm-text-xs rm-rounded hover:rm-bg-gray-200 rm-transition"
+                className="rm-mosaic-button"
                 onClick={handleSplit}
                 title="Split"
               >
@@ -262,7 +271,7 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
               </button>
               <button
                 type="button"
-                className="rm-mosaic-button rm-px-2 rm-py-1 rm-text-xs rm-rounded hover:rm-bg-gray-200 rm-transition"
+                className="rm-mosaic-button"
                 onClick={handleExpand}
                 title="Expand"
               >
@@ -273,7 +282,7 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
           {closable !== false && (
             <button
               type="button"
-              className="rm-mosaic-button rm-px-2 rm-py-1 rm-text-xs rm-rounded hover:rm-bg-red-200 rm-transition"
+              className="rm-mosaic-button rm-mosaic-button--close"
               onClick={handleRemove}
               title="Close"
             >
@@ -281,21 +290,14 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
             </button>
           )}
           {additionalControls && (
-            <button
-              type="button"
-              className="rm-mosaic-button rm-px-2 rm-py-1 rm-text-xs rm-rounded hover:rm-bg-gray-200 rm-transition"
-              onClick={toggleDrawer}
-              title="More"
-            >
+            <button type="button" className="rm-mosaic-button" onClick={toggleDrawer} title="More">
               ⋯
             </button>
           )}
         </div>
       </div>
       {isDrawerOpen && additionalControls && (
-        <div className="rm-mosaic-additional-controls rm-bg-mosaic-toolbar rm-border-b rm-border-mosaic-border rm-px-4 rm-py-2">
-          {additionalControls}
-        </div>
+        <div className="rm-mosaic-additional-controls">{additionalControls}</div>
       )}
     </>
   );

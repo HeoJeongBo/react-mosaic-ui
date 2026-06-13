@@ -250,7 +250,7 @@ describe('MosaicLayout', () => {
         // The content's anchor must have been moved INTO a mosaic tile slot,
         // not left orphaned on document.body.
         expect(content.closest('.react-mosaic')).not.toBeNull();
-        expect(content.closest('.rm-absolute')).not.toBeNull();
+        expect(content.closest('.rm-mosaic-tile')).not.toBeNull();
       }
     });
 
@@ -299,7 +299,7 @@ describe('MosaicLayout', () => {
       for (const id of ['a', 'b', 'c']) {
         const content = screen.getByTestId(`content-${id}`);
         expect(content.closest('.react-mosaic')).not.toBeNull();
-        expect(content.closest('.rm-absolute')).not.toBeNull();
+        expect(content.closest('.rm-mosaic-tile')).not.toBeNull();
       }
     });
 
@@ -336,7 +336,7 @@ describe('MosaicLayout', () => {
 
       const content = screen.getByTestId('content-a');
       expect(content.isConnected).toBe(true);
-      expect(content.closest('.rm-absolute')).not.toBeNull();
+      expect(content.closest('.rm-mosaic-tile')).not.toBeNull();
     });
 
     it('adding a panel does not unmount existing panels', () => {

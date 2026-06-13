@@ -1,149 +1,38 @@
+/* ==========================================================================
+   react-mosaic-ui — styles
+   --------------------------------------------------------------------------
+   All styling lives on semantic classes (.rm-mosaic-window, .rm-mosaic-window-
+   toolbar, .rm-mosaic-window-body, .rm-mosaic-button, …). None use !important,
+   so consumers override any of them with plain CSS at normal specificity.
+
+   Theming is driven by --rm-* custom properties (defaults inlined via
+   var(--name, fallback)). Override them on :root or any ancestor element.
+   ========================================================================== */
+
 :root {
-  --color-mosaic-border: #cbd5e1;
-  --color-mosaic-background: #ffffff;
-  --color-mosaic-window: #f8fafc;
-  --color-mosaic-toolbar: #f1f5f9;
-  --color-mosaic-split: #94a3b8;
-  --color-mosaic-split-hover: #64748b;
-  --z-mosaic: 1000;
+  /* Colors */
+  --rm-border-color: #cbd5e1;
+  --rm-background: #ffffff;
+  --rm-window-bg: #f8fafc;
+  --rm-toolbar-bg: #f1f5f9;
+  --rm-split-color: #94a3b8;
+  --rm-split-hover: #64748b;
+
+  /* Sizing / layout tokens */
   --rm-split-size: 4px;
   --rm-toolbar-height: 40px;
+  --rm-toolbar-padding: 0.5rem 1rem;
+  --rm-toolbar-border: 1px solid var(--rm-border-color);
+  --rm-window-radius: 0.25rem;
+  --rm-window-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  --rm-window-body-padding: 1rem;
+
+  --z-mosaic: 1000;
 }
 
-/* Utility classes */
-.rm-absolute {
-  position: absolute !important;
-}
-
-.rm-relative {
-  position: relative !important;
-}
-
-.rm-w-full {
-  width: 100% !important;
-}
-
-.rm-h-full {
-  height: 100% !important;
-}
-
-.rm-flex {
-  display: flex !important;
-}
-
-.rm-items-center {
-  align-items: center !important;
-}
-
-.rm-justify-center {
-  justify-content: center !important;
-}
-
-.rm-justify-between {
-  justify-content: space-between !important;
-}
-
-.rm-gap-1 {
-  gap: 0.25rem !important;
-}
-
-.rm-text-gray-500 {
-  color: #6b7280 !important;
-}
-
-.rm-text-sm {
-  font-size: 0.875rem !important;
-  line-height: 1.25rem !important;
-}
-
-.rm-text-xs {
-  font-size: 0.75rem !important;
-  line-height: 1rem !important;
-}
-
-.rm-font-medium {
-  font-weight: 500 !important;
-}
-
-.rm-px-2 {
-  padding-left: 0.5rem !important;
-  padding-right: 0.5rem !important;
-}
-
-.rm-py-1 {
-  padding-top: 0.25rem !important;
-  padding-bottom: 0.25rem !important;
-}
-
-.rm-px-4 {
-  padding-left: 1rem !important;
-  padding-right: 1rem !important;
-}
-
-.rm-py-2 {
-  padding-top: 0.5rem !important;
-  padding-bottom: 0.5rem !important;
-}
-
-.rm-rounded {
-  border-radius: 0.25rem !important;
-}
-
-.rm-border-b {
-  border-bottom-width: 1px !important;
-}
-
-.rm-border-mosaic-border {
-  border-color: var(--color-mosaic-border) !important;
-}
-
-.rm-bg-mosaic-toolbar {
-  background-color: var(--color-mosaic-toolbar) !important;
-}
-
-.rm-select-none {
-  user-select: none !important;
-}
-
-.rm-cursor-move {
-  cursor: move !important;
-}
-
-.rm-overflow-hidden {
-  overflow: hidden !important;
-}
-
-.rm-z-mosaic {
-  z-index: var(--z-mosaic) !important;
-}
-
-.rm-transition-colors {
-  transition: background-color 0.15s !important;
-}
-
-.rm-transition {
-  transition-property: all !important;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
-  transition-duration: 150ms !important;
-}
-
-.rm-bg-mosaic-split {
-  background: var(--color-mosaic-split) !important;
-}
-
-.rm-bg-mosaic-split-hover {
-  background: var(--color-mosaic-split-hover) !important;
-}
-
-.hover\:rm-bg-gray-200:hover {
-  background-color: #e5e7eb !important;
-}
-
-.hover\:rm-bg-red-200:hover {
-  background-color: #fecaca !important;
-}
-
-/* Base styles */
+/* --------------------------------------------------------------------------
+   Root container
+   -------------------------------------------------------------------------- */
 .react-mosaic {
   position: relative;
   width: 100%;
@@ -151,13 +40,32 @@
   overflow: hidden;
 }
 
+/* Empty / zero-state message shown when there are no tiles. */
+.rm-mosaic-zero-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--rm-zero-state-color, #6b7280);
+}
+
+/* Leaf tile container — positioned absolutely by inline top/left/width/height. */
+.rm-mosaic-tile {
+  position: absolute;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Window
+   -------------------------------------------------------------------------- */
 .rm-mosaic-window {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--color-mosaic-window);
-  border-radius: 0.25rem;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  background: var(--rm-window-bg);
+  border-radius: var(--rm-window-radius);
+  box-shadow: var(--rm-window-shadow);
   overflow: hidden;
 }
 
@@ -165,26 +73,32 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 1rem;
-  background: var(--color-mosaic-toolbar);
-  border-bottom: 1px solid var(--color-mosaic-border);
+  padding: var(--rm-toolbar-padding);
+  background: var(--rm-toolbar-bg);
+  border-bottom: var(--rm-toolbar-border);
   user-select: none;
   height: var(--rm-toolbar-height);
 }
 
 .rm-mosaic-window-title {
+  flex: 1;
   font-weight: 500;
   font-size: 0.875rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
   user-select: auto;
   -webkit-user-drag: element;
+  cursor: grab;
+}
+
+.rm-mosaic-window-title:active {
+  cursor: grabbing;
 }
 
 .rm-mosaic-window-controls {
   display: flex;
+  align-items: center;
   gap: 0.25rem;
   flex-shrink: 0;
 }
@@ -192,9 +106,28 @@
 .rm-mosaic-window-body {
   flex: 1;
   overflow: auto;
-  padding: 1rem;
+  padding: var(--rm-window-body-padding);
 }
 
+/* Drawer beneath the toolbar that hosts additionalControls. */
+.rm-mosaic-additional-controls {
+  padding: var(--rm-toolbar-padding);
+  background: var(--rm-toolbar-bg);
+  border-bottom: var(--rm-toolbar-border);
+}
+
+/* Wrapper applied around a consumer-supplied renderToolbar (acts as drag handle). */
+.rm-mosaic-custom-toolbar {
+  cursor: grab;
+}
+
+.rm-mosaic-custom-toolbar:active {
+  cursor: grabbing;
+}
+
+/* --------------------------------------------------------------------------
+   Toolbar buttons
+   -------------------------------------------------------------------------- */
 .rm-mosaic-button {
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
@@ -204,38 +137,34 @@
   user-select: none;
   border: 0;
   outline: none;
+  background: transparent;
 }
 
 .rm-mosaic-button:hover {
-  background-color: rgb(229 231 235);
+  background-color: var(--rm-button-hover, rgb(229 231 235));
 }
 
 .rm-mosaic-button:active {
-  background-color: rgb(209 213 219);
+  background-color: var(--rm-button-active, rgb(209 213 219));
 }
 
+.rm-mosaic-button--close:hover {
+  background-color: var(--rm-button-close-hover, #fecaca);
+}
+
+/* --------------------------------------------------------------------------
+   Resize splitter
+   -------------------------------------------------------------------------- */
 .rm-mosaic-split {
   position: absolute;
-  background: var(--color-mosaic-split);
+  background: var(--rm-split-color);
   transition: background-color 0.15s;
   z-index: 1;
   pointer-events: auto;
 }
 
 .rm-mosaic-split:hover {
-  background: var(--color-mosaic-split-hover);
-}
-
-/* During active resize: suppress transition and promote to GPU layer. */
-.rm-mosaic-split.rm-bg-mosaic-split-hover {
-  transition: none;
-  will-change: left, top;
-}
-
-/* Dim all window titles while any window is being dragged.
-   .rm-dragging is toggled imperatively on the container — no React re-render needed. */
-.rm-dragging .rm-mosaic-window-title {
-  opacity: 0.5;
+  background: var(--rm-split-hover);
 }
 
 .rm-cursor-col-resize {
@@ -246,11 +175,29 @@
   cursor: row-resize;
 }
 
-/* Drop targets: invisible and non-interactive by default.
-   Only becomes interactive when parent has rm-dragging class (set imperatively).
-   Position and size are driven by data-position / data-hit-area attributes.
-   Hover state is toggled imperatively via rm-drop-target--over (no React re-render). */
+/* During active resize: keep the hover color, suppress transition, promote to a
+   GPU layer. .rm-mosaic-split--active is toggled by React while dragging. */
+.rm-mosaic-split.rm-mosaic-split--active {
+  background: var(--rm-split-hover);
+  transition: none;
+  will-change: left, top;
+}
+
+/* --------------------------------------------------------------------------
+   Drag state (toggled imperatively on the container — no React re-render)
+   -------------------------------------------------------------------------- */
+.rm-dragging .rm-mosaic-window-title {
+  opacity: 0.5;
+}
+
+/* --------------------------------------------------------------------------
+   Drop targets: invisible and non-interactive by default. Only become
+   interactive when the parent has .rm-dragging (set imperatively). Position and
+   size are driven by data-position / data-hit-area attributes. Hover state is
+   toggled imperatively via .rm-drop-target--over (no React re-render).
+   -------------------------------------------------------------------------- */
 .rm-mosaic-drop-target {
+  position: absolute;
   pointer-events: none;
   opacity: 0;
   background-color: rgba(59, 130, 246, 0.2);
@@ -289,9 +236,10 @@
   pointer-events: all;
 }
 
-/* Root drop targets: completely hidden until drag starts.
-   These span the full layout (path=[]) for root-level splits. */
+/* Root drop targets: hidden until drag starts. These span the full layout
+   (path=[]) for root-level splits. */
 .rm-root-drop-targets {
+  position: absolute;
   display: none;
 }
 
@@ -304,8 +252,8 @@
   pointer-events: all;
 }
 
-/* Viewport-edge drop targets: keep hidden unless dragging. These allow
-   dropping on browser viewport edges while preserving existing window logic. */
+/* Viewport-edge drop targets: hidden unless dragging. Allow dropping on the
+   browser viewport edges while preserving existing window logic. */
 .rm-viewport-edge-drop-targets {
   display: none;
 }
@@ -317,4 +265,18 @@
 
 .rm-dragging .rm-viewport-edge-drop-targets .rm-mosaic-drop-target {
   pointer-events: all;
+}
+
+/* ==========================================================================
+   DEPRECATED — backward-compat aliases for the pre-3.0 --color-mosaic-* names.
+   Setting an old variable still themes the library for one release cycle.
+   These will be removed in v4. Migrate to the --rm-* names above.
+   ========================================================================== */
+:root {
+  --rm-border-color: var(--color-mosaic-border, #cbd5e1);
+  --rm-background: var(--color-mosaic-background, #ffffff);
+  --rm-window-bg: var(--color-mosaic-window, #f8fafc);
+  --rm-toolbar-bg: var(--color-mosaic-toolbar, #f1f5f9);
+  --rm-split-color: var(--color-mosaic-split, #94a3b8);
+  --rm-split-hover: var(--color-mosaic-split-hover, #64748b);
 }

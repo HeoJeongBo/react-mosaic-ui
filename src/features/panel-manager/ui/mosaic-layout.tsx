@@ -69,18 +69,20 @@ function StablePanelList<TId extends MosaicKey>({
         if (!panel || !anchor) return null;
 
         const renderToolbar = panel.renderToolbar;
-        const closableProps = panel.closable !== undefined ? { closable: panel.closable } : {};
+        const passthrough = {
+          ...(panel.closable !== undefined && { closable: panel.closable }),
+          ...(panel.hideToolbar !== undefined && { hideToolbar: panel.hideToolbar }),
+          ...(panel.bodyPadding !== undefined && { bodyPadding: panel.bodyPadding }),
+          ...(panel.bodyClassName !== undefined && { bodyClassName: panel.bodyClassName }),
+        };
         const windowContent = renderToolbar ? (
           <MosaicWindow<TId>
             title={panel.title}
             path={path}
             panelId={p.id}
-            {...closableProps}
+            {...passthrough}
             renderToolbar={({ dragHandle }) => (
-              <div
-                ref={dragHandle.ref}
-                className="rm-mosaic-custom-toolbar rm-cursor-grab active:rm-cursor-grabbing"
-              >
+              <div ref={dragHandle.ref} className="rm-mosaic-custom-toolbar">
                 {renderToolbar()}
               </div>
             )}
@@ -88,7 +90,7 @@ function StablePanelList<TId extends MosaicKey>({
             {panel.content}
           </MosaicWindow>
         ) : (
-          <MosaicWindow<TId> title={panel.title} path={path} panelId={p.id} {...closableProps}>
+          <MosaicWindow<TId> title={panel.title} path={path} panelId={p.id} {...passthrough}>
             {panel.content}
           </MosaicWindow>
         );
@@ -205,7 +207,11 @@ export function MosaicLayout<TId extends MosaicKey = string>({
           node = panel.id;
         } else {
           const nextCount = getLeaves(node).length + 1;
-          const direction = getDirectionRef.current ? getDirectionRef.current(nextCount) : 'row';
+          const direction = getDirectionRef.current
+            ? getDirectionRef.current(nextCount)
+            : nextCount % 2 === 0
+              ? 'row'
+              : 'column';
           node = { direction, first: node, second: panel.id, splitPercentage: 50 };
         }
       }

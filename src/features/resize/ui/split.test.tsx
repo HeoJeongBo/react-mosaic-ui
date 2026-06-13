@@ -190,10 +190,10 @@ describe('Split', () => {
       } as DOMRect);
 
       fireEvent.mouseDown(el, { clientX: 500, clientY: 0 });
-      expect(el).toHaveClass('rm-bg-mosaic-split-hover');
+      expect(el).toHaveClass('rm-mosaic-split--active');
 
       fireEvent.mouseUp(document);
-      expect(el).not.toHaveClass('rm-bg-mosaic-split-hover');
+      expect(el).not.toHaveClass('rm-mosaic-split--active');
     });
 
     it('does nothing when parentElement is null', () => {

@@ -124,7 +124,7 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
   if (!isParent(node)) {
     return (
       <div
-        className="rm-absolute rm-overflow-hidden"
+        className="rm-mosaic-tile"
         style={{
           top: `${boundingBox.top}%`,
           right: `${100 - boundingBox.right}%`,

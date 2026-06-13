@@ -117,6 +117,12 @@ export interface MosaicPanelConfig<TId extends MosaicKey = string> {
   renderToolbar?: () => import('react').ReactNode;
   Wrapper?: import('react').ComponentType<{ children: import('react').ReactNode }>;
   closable?: boolean;
+  /** Render this panel's window with no toolbar chrome. */
+  hideToolbar?: boolean;
+  /** Inline padding override for this panel's window body. */
+  bodyPadding?: string | number;
+  /** Extra class applied to this panel's window body. */
+  bodyClassName?: string;
 }
 
 /**

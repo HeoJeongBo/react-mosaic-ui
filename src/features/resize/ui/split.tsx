@@ -205,15 +205,11 @@ export const Split = ({
   return (
     <div
       ref={containerRef}
-      className={classNames(
-        'rm-mosaic-split',
-        'rm-absolute rm-bg-mosaic-split rm-transition-colors',
-        {
-          'rm-cursor-col-resize': isRow,
-          'rm-cursor-row-resize': !isRow,
-          'rm-bg-mosaic-split-hover': isDragging,
-        },
-      )}
+      className={classNames('rm-mosaic-split', {
+        'rm-cursor-col-resize': isRow,
+        'rm-cursor-row-resize': !isRow,
+        'rm-mosaic-split--active': isDragging,
+      })}
       style={{
         ...(isRow
           ? {

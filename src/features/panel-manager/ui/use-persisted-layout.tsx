@@ -12,19 +12,32 @@ import {
  * A single registry entry describing how to render a panel by its id.
  *
  * Mirrors the real-world `SensorConfigMap` shape (component / toolbar / wrapper)
- * so an existing registry can be passed in without modification. Titles are kept
- * out of this shape on purpose — supply them via the separate `titles` option.
+ * so an existing registry can be passed in without modification.
+ *
+ * `title` can be set here directly; it takes lower priority than the `titles`
+ * option on `usePersistedLayout` so a shared registry can still be overridden
+ * per instance.
+ *
+ * `componentProps` is forwarded to `component` at render time, allowing panels
+ * that require external props (e.g. `{ robot, itemId }`) to be registered without
+ * a wrapper component.
  */
-export interface PersistedPanelEntry {
-  component: ComponentType;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface PersistedPanelEntry<TProps = Record<string, never>> {
+  component: ComponentType<TProps>;
   toolbar?: ComponentType;
   wrapper?: ComponentType<{ children: ReactNode }>;
   closable?: boolean;
+  /** Panel window title. Overridden by the `titles` option on `usePersistedLayout`. */
+  title?: string;
+  /** Props forwarded to `component` at render time. */
+  componentProps?: TProps extends Record<string, never> ? never : TProps;
 }
 
 export type PersistedLayoutRegistry<TId extends MosaicKey = string> = Record<
   TId,
-  PersistedPanelEntry
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  PersistedPanelEntry<any>
 >;
 
 export interface UsePersistedLayoutOptions<TId extends MosaicKey = string> {
@@ -32,7 +45,11 @@ export interface UsePersistedLayoutOptions<TId extends MosaicKey = string> {
   storageKey: string;
   /** Maps each panel id to the component(s) used to render it. */
   registry: PersistedLayoutRegistry<TId>;
-  /** Optional id → window title map. Falls back to `String(id)` when absent. */
+  /**
+   * Optional id → window title map.
+   * Takes priority over `title` in the registry entry. Falls back to `registry[id].title`,
+   * then `String(id)` when absent.
+   */
   titles?: Partial<Record<TId, string>>;
   /** Panels to show on a clean first run (no stored data). Defaults to all registry keys. */
   defaultPanelIds?: TId[];
@@ -133,18 +150,20 @@ function safeRemoveItem(key: string): void {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function entryToConfig<TId extends MosaicKey>(
   id: TId,
-  entry: PersistedPanelEntry,
+  entry: PersistedPanelEntry<any>,
   title: string,
 ): MosaicPanelConfig<TId> {
   const Component = entry.component;
   const Toolbar = entry.toolbar;
   const Wrapper = entry.wrapper;
+  const props = entry.componentProps ?? {};
   return {
     id,
     title,
-    content: <Component />,
+    content: <Component {...props} />,
     ...(Toolbar ? { renderToolbar: () => <Toolbar /> } : {}),
     ...(Wrapper ? { Wrapper } : {}),
     ...(entry.closable !== undefined ? { closable: entry.closable } : {}),
@@ -266,7 +285,7 @@ export function usePersistedLayout<TId extends MosaicKey = string>(
     for (const id of activeIds) {
       const entry = registry[id];
       if (!entry) continue;
-      result.push(entryToConfig(id, entry, titles?.[id] ?? String(id)));
+      result.push(entryToConfig(id, entry, titles?.[id] ?? entry.title ?? String(id)));
     }
     return result;
   }, [activeIds, registry, titles]);

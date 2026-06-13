@@ -94,6 +94,31 @@ describe('MosaicWindow', () => {
       const { container } = renderWindow({ className: 'custom-window' });
       expect(container.querySelector('.custom-window')).toBeInTheDocument();
     });
+
+    it('renders no toolbar when hideToolbar is true', () => {
+      const { container } = renderWindow({ hideToolbar: true });
+      expect(container.querySelector('.rm-mosaic-window-toolbar')).toBeNull();
+      expect(screen.queryByTitle('Close')).toBeNull();
+    });
+
+    it('renders the toolbar by default', () => {
+      const { container } = renderWindow();
+      expect(container.querySelector('.rm-mosaic-window-toolbar')).not.toBeNull();
+    });
+
+    it('applies bodyPadding as inline style on the window body', () => {
+      const { container } = renderWindow({ bodyPadding: 0 });
+      const body = container.querySelector('.rm-mosaic-window-body') as HTMLElement;
+      expect(body).not.toBeNull();
+      expect(body.style.padding).toBe('0px');
+    });
+
+    it('applies bodyClassName alongside the body class', () => {
+      const { container } = renderWindow({ bodyClassName: 'my-body' });
+      const body = container.querySelector('.rm-mosaic-window-body');
+      expect(body).not.toBeNull();
+      expect(body).toHaveClass('my-body');
+    });
   });
 
   describe('toolbar actions', () => {

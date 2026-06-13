@@ -41,7 +41,7 @@ react-mosaic-ui/
 │   ├── shared/            # Types, utilities
 │   ├── entities/          # Mosaic, MosaicWindow
 │   ├── features/          # resize, drag-drop
-│   └── styles/            # Tailwind CSS
+│   └── styles/            # Plain CSS (rm- prefix, CSS-variable theming)
 │
 ├── example/               # Standalone example app
 │   ├── src/

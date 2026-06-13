@@ -25,6 +25,24 @@ export function usePanelState<T>(
 
   // Fallback local state when used outside PanelStateContext or without a panelId.
   const localStateRef = useRef<T>(resolveDefault(defaultState));
+
+  const warnedRef = useRef(false);
+  if (!warnedRef.current && process.env.NODE_ENV !== 'production' && (!ctx || !panelIdStr)) {
+    warnedRef.current = true;
+    if (!ctx) {
+      console.warn(
+        '[react-mosaic-ui] usePanelState: PanelStateProvider not found. ' +
+          'Wrap <MosaicLayout> with the PanelStateProvider returned from usePersistedLayout(). ' +
+          'Panel state will not be persisted.',
+      );
+    } else {
+      console.warn(
+        '[react-mosaic-ui] usePanelState: panelId not available. ' +
+          'Ensure this component is rendered inside a MosaicLayout managed by usePersistedLayout(). ' +
+          'Panel state will not be persisted.',
+      );
+    }
+  }
   const [, forceRender] = useReducer((x: number) => x + 1, 0);
 
   // Register defaults synchronously during render (idempotent — no-op if already registered).

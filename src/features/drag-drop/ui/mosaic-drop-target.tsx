@@ -83,7 +83,7 @@ const MosaicDropTargetImpl = ({
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className="rm-mosaic-drop-target rm-absolute"
+      className="rm-mosaic-drop-target"
       data-position={position}
       data-hit-area={hitArea}
     />

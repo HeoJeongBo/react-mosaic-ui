@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v2.6.0...v3.0.0)
+
+### ⚠ BREAKING CHANGES
+
+* **styles**: All styling now lives on single semantic classes (`.rm-mosaic-window-toolbar`, `.rm-mosaic-window-body`, …) and **no rule uses `!important`** anymore. Consumers can now override any class with plain CSS at normal specificity. If you previously fought the library's `!important` with your own `!important` overrides, you can drop them.
+* **styles**: The internal `!important` utility classes (`rm-flex`, `rm-px-4`, `rm-bg-mosaic-toolbar`, etc.) are no longer emitted in `styles.css`. They were never a public API, but if you referenced them directly they're gone.
+* **theming**: The CSS theming variables are unified under the `--rm-*` namespace (the names the README already documented). The old, undocumented `--color-mosaic-*` names are aliased for one release cycle and will be removed in v4 — migrate to `--rm-border-color`, `--rm-window-bg`, `--rm-toolbar-bg`, `--rm-split-color`, `--rm-split-hover`, `--rm-background`.
+
+### Features
+
+* **MosaicWindow**: new `hideToolbar`, `bodyPadding`, and `bodyClassName` props for headless / no-chrome windows without any CSS overrides. Also accepted per-panel via `MosaicPanelConfig` on `MosaicLayout` / `usePersistedLayout`.
+* **theming**: new CSS variables `--rm-window-body-padding`, `--rm-toolbar-padding`, `--rm-toolbar-border`, `--rm-window-radius`, `--rm-window-shadow`.
+
+### Chores
+
+* Removed the dead `tailwind.config.ts` and the unused `tailwindcss` / `@tailwindcss/postcss` dev dependencies (the CSS is hand-written; the build only runs autoprefixer).
+
 ## [2.6.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v2.4.2...v2.6.0) (2026-06-05)
 
 ### Features

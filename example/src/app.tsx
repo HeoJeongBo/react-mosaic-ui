@@ -338,21 +338,13 @@ function BorderProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Same shape as a real-world STATIC_SENSOR_CONFIG_REGISTRY — no titles here.
+// Titles are colocated with their registry entry — no separate titles map needed.
 const PERSISTED_REGISTRY: PersistedLayoutRegistry<PersistedViewId> = {
-  alpha: { component: AlphaView },
-  beta: { component: BetaView, toolbar: BetaToolbar },
-  gamma: { component: GammaView, wrapper: BorderProvider },
-  measured: { component: MeasuredView },
-  todo: { component: TodoView },
-};
-
-const PERSISTED_TITLES: Record<PersistedViewId, string> = {
-  alpha: 'Alpha',
-  beta: 'Beta',
-  gamma: 'Gamma',
-  measured: 'Measured',
-  todo: 'Todo (panel state)',
+  alpha: { component: AlphaView, title: 'Alpha' },
+  beta: { component: BetaView, toolbar: BetaToolbar, title: 'Beta' },
+  gamma: { component: GammaView, wrapper: BorderProvider, title: 'Gamma' },
+  measured: { component: MeasuredView, title: 'Measured' },
+  todo: { component: TodoView, title: 'Todo (panel state)' },
 };
 
 const PERSISTED_STORAGE_KEY = 'react-mosaic-demo-layout';
@@ -374,7 +366,6 @@ function PersistedDemo() {
   } = usePersistedLayout<PersistedViewId>({
     storageKey: PERSISTED_STORAGE_KEY,
     registry: PERSISTED_REGISTRY,
-    titles: PERSISTED_TITLES,
     onSave: () => {
       setSavedFlash(true);
       window.setTimeout(() => setSavedFlash(false), 1500);
@@ -407,7 +398,9 @@ function PersistedDemo() {
             className="demo-btn"
             onClick={() => (activeIds.has(id) ? removePanel(id) : addPanel(id))}
           >
-            {activeIds.has(id) ? `− ${PERSISTED_TITLES[id]}` : `+ ${PERSISTED_TITLES[id]}`}
+            {activeIds.has(id)
+              ? `− ${PERSISTED_REGISTRY[id].title ?? id}`
+              : `+ ${PERSISTED_REGISTRY[id].title ?? id}`}
           </button>
         ))}
       </div>

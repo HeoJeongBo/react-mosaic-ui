@@ -21,7 +21,7 @@ const RootDropTargetsImpl = () => {
   return (
     <>
       <div
-        className="rm-root-drop-targets rm-absolute"
+        className="rm-root-drop-targets"
         style={{ inset: 0, zIndex: 990, pointerEvents: 'none' }}
       >
         <MosaicDropTarget

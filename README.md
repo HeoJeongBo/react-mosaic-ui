@@ -158,6 +158,10 @@ Renders a mosaic from a flat array of panel configs. Adding or removing panels s
 | `content` | `ReactNode` | Window body |
 | `renderToolbar` | `() => ReactNode` | Optional custom toolbar content |
 | `Wrapper` | `ComponentType<{ children: ReactNode }>` | Optional wrapper around the entire window |
+| `closable` | `boolean` | Optional — show/hide the close button |
+| `hideToolbar` | `boolean` | Optional — render this panel's window with no toolbar chrome |
+| `bodyPadding` | `string \| number` | Optional — inline padding override for this panel's body |
+| `bodyClassName` | `string` | Optional — extra class on this panel's body |
 
 **`MosaicLayout` props**
 
@@ -305,6 +309,9 @@ function Dashboard() {
 | `onDragStart` | `() => void` | — | Called when drag begins |
 | `onDragEnd` | `(type: 'drop' \| 'reset') => void` | — | Called when drag ends |
 | `className` | `string` | — | Extra class on the window element |
+| `hideToolbar` | `boolean` | `false` | Render with no toolbar chrome at all |
+| `bodyPadding` | `string \| number` | — | Inline padding override for the body (wins over CSS) |
+| `bodyClassName` | `string` | — | Extra class on the window body |
 
 **Built-in toolbar buttons** (visible when `createNode` is provided):
 
@@ -421,22 +428,85 @@ Import the stylesheet once at your app entry point:
 import '@heojeongbo/react-mosaic-ui/styles.css';
 ```
 
-Override CSS variables to theme the layout:
+### Theming with CSS variables
+
+Override these on `:root` (or any ancestor of the mosaic) to theme the layout. No `!important` required.
 
 ```css
 :root {
+  /* Colors */
   --rm-border-color: #cbd5e1;
   --rm-background: #ffffff;
   --rm-window-bg: #f8fafc;
   --rm-toolbar-bg: #f1f5f9;
   --rm-split-color: #94a3b8;
   --rm-split-hover: #64748b;
-  --rm-split-size: 4px;       /* Width/height of the resize handle */
+
+  /* Sizing / layout */
+  --rm-split-size: 4px;                 /* Width/height of the resize handle */
   --rm-toolbar-height: 40px;
+  --rm-toolbar-padding: 0.5rem 1rem;
+  --rm-toolbar-border: 1px solid var(--rm-border-color);
+  --rm-window-radius: 0.25rem;
+  --rm-window-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  --rm-window-body-padding: 1rem;       /* Inner padding of each window's content */
 }
 ```
 
-All internal class names use the `rm-` prefix and are scoped under `.react-mosaic`, so they won't conflict with your own styles.
+### Overriding with plain CSS (no `!important`)
+
+Every element carries exactly one semantic class that owns all of its styling — `.rm-mosaic-window`, `.rm-mosaic-window-toolbar`, `.rm-mosaic-window-title`, `.rm-mosaic-window-controls`, `.rm-mosaic-window-body`, `.rm-mosaic-button`, `.rm-mosaic-split`, … Because none of them use `!important`, you can override any of them at normal specificity:
+
+```css
+/* A flush, chrome-less look — no !important anywhere */
+.rm-mosaic-window {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rm-mosaic-window-toolbar {
+  background: none;
+  height: auto;
+  border-bottom: none;
+  padding: 0;
+}
+
+.rm-mosaic-window-body {
+  padding: 0;
+}
+```
+
+You can also kill the body padding globally with just the variable:
+
+```css
+:root { --rm-window-body-padding: 0; }
+```
+
+All class names use the `rm-` prefix, so they won't collide with your own styles.
+
+### Headless / no-chrome windows
+
+When you don't want the default toolbar or body padding at all, use props instead of CSS overrides:
+
+| Prop | Type | Effect |
+|------|------|--------|
+| `hideToolbar` | `boolean` | Render the window with no toolbar chrome at all. |
+| `bodyPadding` | `string \| number` | Inline padding override for the body (e.g. `0`). Wins over CSS without `!important`. |
+| `bodyClassName` | `string` | Extra class on the body, for full control. |
+
+```tsx
+<MosaicWindow title="Chart" path={path} hideToolbar bodyPadding={0}>
+  <Chart />
+</MosaicWindow>
+```
+
+These are also available per-panel on `MosaicLayout` / `usePersistedLayout` panel configs (`hideToolbar`, `bodyPadding`, `bodyClassName`). The `renderToolbar={() => null}` escape hatch still works if you prefer it.
+
+### Migrating from 2.x
+
+- **No more `!important`.** All styling moved onto single semantic classes with normal specificity. If you previously used `!important` to fight the library's own `!important`, you can remove it — plain overrides now win.
+- **Theming variables renamed to `--rm-*`.** The old `--color-mosaic-*` names still work for one release cycle (they're aliased) but are deprecated; switch to `--rm-border-color`, `--rm-window-bg`, `--rm-toolbar-bg`, `--rm-split-color`, `--rm-split-hover`, `--rm-background`.
+- **Internal utility classes removed.** `rm-flex`, `rm-px-4`, `rm-bg-mosaic-toolbar`, etc. are no longer in `styles.css`. They were never public; if you referenced them, target the semantic classes instead.
 
 ### Custom toolbar
 
@@ -596,7 +666,7 @@ The release process runs lint + typecheck + tests, builds, bumps the version, ge
 | React 18 / 19 | UI |
 | TypeScript 5 | Type safety |
 | Rollup | Library bundler |
-| Tailwind CSS v4 | Styling (`rm-` prefix) |
+| Plain CSS | Styling — `rm-` prefix, CSS-variable theming, no `!important` |
 | React DnD | Drag and drop |
 | Immer | Immutable tree updates |
 | Vitest | Testing |
