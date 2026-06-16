@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0.1](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v4.0.0...v4.0.1) (2026-06-16)
+
+### Features
+
+* improve performance ([eae7596](https://github.com/HeoJeongBo/react-mosaic-ui/commit/eae7596288a536b8a97507ecde560731f9d89667))
+
 ## [4.0.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v2.6.0...v4.0.0) (2026-06-13)
 
 ### Features
