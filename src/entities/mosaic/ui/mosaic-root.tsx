@@ -1,6 +1,6 @@
 import { MosaicDropTarget, RootDropTargets } from '@/features/drag-drop';
 import { Split } from '@/features/resize';
-import { isParent } from '@/shared/lib';
+import { getLeaves, isParent } from '@/shared/lib';
 import { areBoundingBoxesEqual, createBoundingBox, split } from '@/shared/lib/bounding-box';
 import { MosaicContext } from '@/shared/lib/context';
 import { arePathsEqual } from '@/shared/lib/mosaic-utilities';
@@ -16,6 +16,15 @@ export interface MosaicRootProps<T extends MosaicKey> {
 }
 
 const DEFAULT_RESIZE_OPTIONS: ResizeOptions = { minimumPaneSizePercentage: 20 };
+
+// Stable React key for a subtree so the recursive renderer reuses the same
+// element (and thus the same tile DOM + portal anchor) when a node moves to a
+// new depth/position on a tree reshape. A leaf is keyed by its id; a branch by
+// its first (leftmost/topmost) leaf id — a stable anchor that survives wrapping
+// the subtree in a new parent or another leaf moving into it, so unrelated tiles
+// in the branch aren't remounted while the stable-mount guarantee still holds.
+const nodeKey = <T extends MosaicKey>(node: MosaicNode<T>): string =>
+  isParent(node) ? `b:${String(getLeaves(node)[0])}` : `l:${String(node)}`;
 
 export const MosaicRoot = <T extends MosaicKey>({
   root,
@@ -159,6 +168,7 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
   return (
     <>
       <MosaicNodeRenderer
+        key={nodeKey(node.first)}
         node={node.first}
         path={firstPath}
         boundingBox={firstBox}
@@ -166,6 +176,7 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
         mosaicId={mosaicId}
       />
       <Split
+        key="__split"
         direction={node.direction}
         percentage={splitPercentage}
         onChange={handleSplitChange}
@@ -176,6 +187,7 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
         })}
       />
       <MosaicNodeRenderer
+        key={nodeKey(node.second)}
         node={node.second}
         path={secondPath}
         boundingBox={secondBox}

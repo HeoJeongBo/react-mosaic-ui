@@ -24,4 +24,5 @@ export type {
   MosaicContextValue,
   MosaicWindowActions,
   MosaicWindowContextValue,
+  ActiveWindowManager,
 } from './context.types';

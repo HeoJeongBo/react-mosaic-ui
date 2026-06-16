@@ -1,6 +1,12 @@
-import { MosaicContext } from '@/shared/lib/context';
-import type { MosaicContextValue, MosaicNode, MosaicParent, MosaicPath } from '@/shared/types';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { ActiveWindowContext, MosaicContext } from '@/shared/lib/context';
+import type {
+  ActiveWindowManager,
+  MosaicContextValue,
+  MosaicNode,
+  MosaicParent,
+  MosaicPath,
+} from '@/shared/types';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React, { useContext } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Mosaic } from './mosaic';
@@ -1021,6 +1027,210 @@ describe('Mosaic', () => {
 
       vi.useRealTimers();
       vi.unmock('dnd-core');
+    });
+  });
+
+  describe('mosaicActions.maximize / restore', () => {
+    const TWO_TILE: MosaicNode<string> = {
+      direction: 'row',
+      first: 'a',
+      second: 'b',
+      splitPercentage: 50,
+    };
+
+    // Capture context via children (which always render, even when the root is
+    // null and renderTile is never called).
+    function setup(props: Partial<React.ComponentProps<typeof Mosaic<string>>> = {}) {
+      let captured: MosaicContextValue<string> | null = null;
+      const Capture = () => {
+        captured = useContext(MosaicContext) as MosaicContextValue<string>;
+        return null;
+      };
+      const mosaicProps = { renderTile, ...props } as React.ComponentProps<typeof Mosaic<string>>;
+      render(
+        <Mosaic {...mosaicProps}>
+          <Capture />
+        </Mosaic>,
+      );
+      return () => captured!.mosaicActions;
+    }
+
+    it('maximize emits the leaf and sets isMaximized (controlled)', () => {
+      const onChange = vi.fn();
+      const onRelease = vi.fn();
+      const actions = setup({ value: TWO_TILE, onChange, onRelease });
+      actions().maximize(['first']);
+      expect(onChange).toHaveBeenCalledWith('a');
+      expect(onRelease).toHaveBeenCalledWith('a');
+      expect(actions().isMaximized()).toBe(true);
+    });
+
+    it('maximize is a no-op when root is null', () => {
+      const onChange = vi.fn();
+      const actions = setup({ value: null, onChange });
+      actions().maximize(['first']);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(actions().isMaximized()).toBe(false);
+    });
+
+    it('maximize is a no-op for the root path (length 0)', () => {
+      const onChange = vi.fn();
+      const actions = setup({ value: 'a', onChange });
+      actions().maximize([] as unknown as MosaicPath);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(actions().isMaximized()).toBe(false);
+    });
+
+    it('maximize is a no-op when the path resolves to no node', () => {
+      const onChange = vi.fn();
+      const actions = setup({ value: TWO_TILE, onChange });
+      actions().maximize(['second', 'first']);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(actions().isMaximized()).toBe(false);
+    });
+
+    it('maximize updates internal state in uncontrolled mode', () => {
+      const actions = setup({ initialValue: TWO_TILE });
+      act(() => actions().maximize(['first']));
+      expect(actions().isMaximized()).toBe(true);
+      expect(actions().getRoot()).toBe('a');
+    });
+
+    it('maximize works without an onRelease prop', () => {
+      const actions = setup({ value: TWO_TILE, onChange: () => {} });
+      expect(() => actions().maximize(['first'])).not.toThrow();
+    });
+
+    it('restore emits the captured tree and clears isMaximized (controlled)', () => {
+      const onChange = vi.fn();
+      const onRelease = vi.fn();
+      const actions = setup({ value: TWO_TILE, onChange, onRelease });
+      actions().maximize(['first']);
+      onChange.mockClear();
+      onRelease.mockClear();
+      actions().restore();
+      expect(onChange).toHaveBeenCalledWith(TWO_TILE);
+      expect(onRelease).toHaveBeenCalledWith(TWO_TILE);
+      expect(actions().isMaximized()).toBe(false);
+    });
+
+    it('restore reverts internal state in uncontrolled mode', () => {
+      const actions = setup({ initialValue: TWO_TILE });
+      actions().maximize(['first']);
+      actions().restore();
+      expect(actions().getRoot()).toEqual(TWO_TILE);
+      expect(actions().isMaximized()).toBe(false);
+    });
+
+    it('restore is a no-op when nothing is maximized', () => {
+      const onChange = vi.fn();
+      const actions = setup({ value: TWO_TILE, onChange });
+      actions().restore();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('isMaximized defaults to false', () => {
+      const actions = setup({ value: TWO_TILE, onChange: () => {} });
+      expect(actions().isMaximized()).toBe(false);
+    });
+  });
+
+  describe('accessibility', () => {
+    it('root has role=group and a default aria-label', () => {
+      const { container } = render(
+        <Mosaic value="a" onChange={() => {}} renderTile={renderTile} />,
+      );
+      const root = container.querySelector('.react-mosaic') as HTMLElement;
+      expect(root.getAttribute('role')).toBe('group');
+      expect(root.getAttribute('aria-label')).toBe('Mosaic layout');
+    });
+
+    it('root uses a custom ariaLabel when provided', () => {
+      const { container } = render(
+        <Mosaic value="a" onChange={() => {}} renderTile={renderTile} ariaLabel="Editor panes" />,
+      );
+      const root = container.querySelector('.react-mosaic') as HTMLElement;
+      expect(root.getAttribute('aria-label')).toBe('Editor panes');
+    });
+  });
+
+  describe('active-window highlight', () => {
+    const ACTIVE = 'rm-mosaic-window--active';
+
+    // Capture the ActiveWindowManager provided to the tree, then drive it
+    // directly with detached DOM nodes (no real windows needed).
+    function captureManager(props: Partial<React.ComponentProps<typeof Mosaic<string>>> = {}) {
+      let manager: ActiveWindowManager | null = null;
+      const Capture = () => {
+        manager = useContext(ActiveWindowContext);
+        return null;
+      };
+      const mosaicProps = {
+        renderTile,
+        value: 'a',
+        onChange: () => {},
+        ...props,
+      } as React.ComponentProps<typeof Mosaic<string>>;
+      render(
+        <Mosaic {...mosaicProps}>
+          <Capture />
+        </Mosaic>,
+      );
+      return () => manager!;
+    }
+
+    it('activates a window: adds the active ring class', () => {
+      const get = captureManager();
+      const el = document.createElement('div');
+      get().activate(el);
+      expect(el.classList.contains(ACTIVE)).toBe(true);
+    });
+
+    it('moving active to another window clears the previous one', () => {
+      const get = captureManager();
+      const a = document.createElement('div');
+      const b = document.createElement('div');
+      get().activate(a);
+      get().activate(b);
+      expect(a.classList.contains(ACTIVE)).toBe(false);
+      expect(b.classList.contains(ACTIVE)).toBe(true);
+    });
+
+    it('re-activating the already-active window is a no-op', () => {
+      const get = captureManager();
+      const a = document.createElement('div');
+      get().activate(a);
+      expect(() => get().activate(a)).not.toThrow();
+      expect(a.classList.contains(ACTIVE)).toBe(true);
+    });
+
+    it('activate(null) is a no-op', () => {
+      const get = captureManager();
+      expect(() => get().activate(null)).not.toThrow();
+    });
+
+    it('does nothing when highlightActive is false', () => {
+      const get = captureManager({ highlightActive: false });
+      const el = document.createElement('div');
+      get().activate(el);
+      expect(el.classList.contains(ACTIVE)).toBe(false);
+    });
+
+    it('deactivate clears the class and resets current when it was active', () => {
+      const get = captureManager();
+      const el = document.createElement('div');
+      get().activate(el);
+      get().deactivate(el);
+      expect(el.classList.contains(ACTIVE)).toBe(false);
+    });
+
+    it('deactivate of a non-active window leaves the active one untouched', () => {
+      const get = captureManager();
+      const a = document.createElement('div');
+      const b = document.createElement('div');
+      get().activate(a);
+      get().deactivate(b);
+      expect(a.classList.contains(ACTIVE)).toBe(true);
     });
   });
 });

@@ -3,11 +3,13 @@ import {
   createHideUpdate,
   createRemoveUpdate,
   createReplaceUpdate,
+  getNodeAtPath,
   updateSplitPercentage,
   updateTree,
 } from '@/shared/lib';
-import { MosaicContext } from '@/shared/lib/context';
+import { ActiveWindowContext, MosaicContext } from '@/shared/lib/context';
 import type {
+  ActiveWindowManager,
   CreateNode,
   MosaicDirection,
   MosaicKey,
@@ -27,15 +29,32 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { TouchBackend } from 'react-dnd-touch-backend';
 import { MosaicRoot } from './mosaic-root';
 
+/** Props shared by the controlled and uncontrolled forms of {@link Mosaic}. */
 export interface MosaicBaseProps<T extends MosaicKey> {
+  /** Renders the content for a leaf tile, given its id and path in the tree. */
   renderTile: TileRenderer<T>;
+  /** Called on every tree change (resize ticks included). */
   onChange?: (node: MosaicNode<T> | null) => void;
+  /** Called once when an interaction (drag/resize) settles. */
   onRelease?: (node: MosaicNode<T> | null) => void;
+  /** Extra class applied to the root `.react-mosaic` element. */
   className?: string;
+  /** Resize constraints (e.g. minimum pane size). */
   resize?: ResizeOptions;
+  /** Element rendered when the tree is empty. */
   zeroStateView?: JSX.Element;
+  /** Stable id for this mosaic instance (used to scope drag-and-drop). */
   mosaicId?: string;
+  /** Factory for new tiles, enabling the Split/Replace/Maximize toolbar buttons. */
   createNode?: CreateNode<T>;
+  /** Accessible label for the mosaic container (role="group"). Defaults to "Mosaic layout". */
+  ariaLabel?: string;
+  /**
+   * Highlight the focused window with a persistent ring (helps disambiguate
+   * similar panels). Toggled imperatively, so it causes no re-renders. Defaults
+   * to `true`; set `false` to disable.
+   */
+  highlightActive?: boolean;
   children?: React.ReactNode;
 }
 
@@ -55,6 +74,32 @@ export type MosaicProps<T extends MosaicKey> =
 // Module-level handler — avoids allocating a new function on every Mosaic render.
 const preventDefaultHandler = (e: { preventDefault: () => void }) => e.preventDefault();
 
+const ACTIVE_CLASS = 'rm-mosaic-window--active';
+
+// Imperative active-window tracker. Toggles the highlight class directly on the
+// DOM so activating a window never triggers a React re-render — same model as
+// the `.rm-dragging` container toggle. `enabledRef` lets `highlightActive`
+// change without recreating the manager. The highlight is a static ring (no
+// animation), so removing a window never produces a flash.
+const createActiveWindowManager = (enabledRef: {
+  current: boolean;
+}): ActiveWindowManager => {
+  let current: HTMLElement | null = null;
+
+  return {
+    activate: (el) => {
+      if (!enabledRef.current || el === null || el === current) return;
+      if (current !== null) current.classList.remove(ACTIVE_CLASS);
+      current = el;
+      el.classList.add(ACTIVE_CLASS);
+    },
+    deactivate: (el) => {
+      if (current === el) current = null;
+      el.classList.remove(ACTIVE_CLASS);
+    },
+  };
+};
+
 const isControlled = <T extends MosaicKey>(
   props: MosaicProps<T>,
 ): props is MosaicControlledProps<T> => {
@@ -71,6 +116,10 @@ const getBackend = () => {
   return isTouchOnly ? TouchBackend : HTML5Backend;
 };
 
+/**
+ * The core tiling window manager. Renders a binary tree of tiles with drag-and-drop
+ * and resize. Works controlled (`value` + `onChange`) or uncontrolled (`initialValue`).
+ */
 export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
   const {
     renderTile,
@@ -80,6 +129,8 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
     resize,
     zeroStateView,
     mosaicId = 'default-mosaic',
+    ariaLabel,
+    highlightActive = true,
     children,
   } = props;
 
@@ -112,6 +163,20 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
 
   const currentValueRef = useRef(currentValue);
   currentValueRef.current = currentValue;
+
+  // maximize/restore: remember the full tree before maximizing a single tile.
+  const preMaximizeTreeRef = useRef<MosaicNode<T> | null>(null);
+  const isMaximizedRef = useRef(false);
+
+  // Active-window highlight: a single imperative manager, created once. The
+  // enabled flag is read through a ref so toggling `highlightActive` never
+  // recreates the manager or the context value.
+  const highlightActiveRef = useRef(highlightActive);
+  highlightActiveRef.current = highlightActive;
+  const activeManagerRef = useRef<ActiveWindowManager | null>(null);
+  if (activeManagerRef.current === null) {
+    activeManagerRef.current = createActiveWindowManager(highlightActiveRef);
+  }
 
   // mosaicActions is created once and never changes — all external values
   // are read from refs at call-time.
@@ -214,6 +279,30 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
         onChangeRef.current?.(newTree);
         onReleaseRef.current?.(newTree);
       },
+
+      maximize: (path: MosaicPath) => {
+        const root = currentValueRef.current;
+        if (root === null || path.length === 0) return;
+        const leaf = getNodeAtPath(root, path);
+        if (leaf === null) return;
+        preMaximizeTreeRef.current = root;
+        isMaximizedRef.current = true;
+        if (!controlledRef.current) setInternalValue(leaf);
+        onChangeRef.current?.(leaf);
+        onReleaseRef.current?.(leaf);
+      },
+
+      restore: () => {
+        if (!isMaximizedRef.current) return;
+        const prev = preMaximizeTreeRef.current;
+        isMaximizedRef.current = false;
+        preMaximizeTreeRef.current = null;
+        if (!controlledRef.current) setInternalValue(prev);
+        onChangeRef.current?.(prev);
+        onReleaseRef.current?.(prev);
+      },
+
+      isMaximized: () => isMaximizedRef.current,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -271,22 +360,27 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
   return (
     <DndContext.Provider value={dndContextValue}>
       <MosaicContext.Provider value={contextValue}>
-        <div
-          ref={containerRef}
-          className={classNames(
-            'react-mosaic',
-            className !== 'react-mosaic' ? className : undefined,
-          )}
-          onDragOver={preventDefaultHandler}
-          onDrop={preventDefaultHandler}
-        >
-          {currentValue === null ? (
-            (zeroStateView ?? <div className="rm-mosaic-zero-state">Drop a window here</div>)
-          ) : (
-            <MosaicRoot root={currentValue} {...(resize !== undefined && { resize })} />
-          )}
-          {children}
-        </div>
+        <ActiveWindowContext.Provider value={activeManagerRef.current}>
+          <div
+            ref={containerRef}
+            className={classNames(
+              'react-mosaic',
+              className !== 'react-mosaic' ? className : undefined,
+            )}
+            onDragOver={preventDefaultHandler}
+            onDrop={preventDefaultHandler}
+            // biome-ignore lint/a11y/useSemanticElements: .react-mosaic is the public container element; role="group" gives grouping semantics without changing the div DOM contract.
+            role="group"
+            aria-label={ariaLabel ?? 'Mosaic layout'}
+          >
+            {currentValue === null ? (
+              (zeroStateView ?? <div className="rm-mosaic-zero-state">Drop a window here</div>)
+            ) : (
+              <MosaicRoot root={currentValue} {...(resize !== undefined && { resize })} />
+            )}
+            {children}
+          </div>
+        </ActiveWindowContext.Provider>
       </MosaicContext.Provider>
     </DndContext.Provider>
   );

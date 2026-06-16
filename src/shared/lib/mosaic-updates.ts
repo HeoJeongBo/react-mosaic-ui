@@ -94,7 +94,10 @@ export const createRemoveUpdate = <T extends MosaicKey>(
   path: MosaicPath,
 ): MosaicUpdate<T> => {
   if (root === null || path.length === 0) {
-    throw new Error('Cannot remove root node');
+    throw new Error(
+      'Cannot remove the root node: a path of length 0 has no parent to collapse into. ' +
+        'To clear the layout, set the tree to null instead.',
+    );
   }
 
   const parentPath = path.slice(0, -1);
@@ -102,9 +105,12 @@ export const createRemoveUpdate = <T extends MosaicKey>(
   const siblingBranch = getOtherBranch(branch);
 
   const parent = getAndAssertNodeAtPathExists(root, parentPath);
-  /* v8 ignore next 3 -- tree invariant: the parent of a valid leaf path is always a parent node */
+  /* v8 ignore next 6 -- tree invariant: the parent of a valid leaf path is always a parent node */
   if (!isParent(parent)) {
-    throw new Error('Parent is not a parent node');
+    throw new Error(
+      "Expected a split (parent) node at the path's parent, but found a leaf. " +
+        'The tree is malformed or the path is stale.',
+    );
   }
 
   const sibling = parent[siblingBranch];
@@ -123,7 +129,9 @@ export const createExpandUpdate = <T extends MosaicKey>(
   percentage = 70,
 ): MosaicUpdate<T> => {
   if (path.length === 0) {
-    throw new Error('Cannot expand root node');
+    throw new Error(
+      'Cannot expand the root node: expand requires a node nested inside at least one split.',
+    );
   }
 
   const parentPath = path.slice(0, -1);

@@ -225,6 +225,12 @@ export const Split = ({
               height: 'var(--rm-split-size, 4px)',
             }),
       }}
+      role="separator"
+      aria-orientation={isRow ? 'vertical' : 'horizontal'}
+      aria-valuenow={Math.round(effectivePercentage)}
+      aria-valuemin={Math.round(minimumPaneSizePercentage)}
+      aria-valuemax={Math.round(100 - minimumPaneSizePercentage)}
+      tabIndex={0}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
     />

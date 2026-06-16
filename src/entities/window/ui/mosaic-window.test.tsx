@@ -1,5 +1,5 @@
-import { MosaicContext, MosaicWindowContext } from '@/shared/lib/context';
-import type { MosaicNode } from '@/shared/types';
+import { ActiveWindowContext, MosaicContext, MosaicWindowContext } from '@/shared/lib/context';
+import type { ActiveWindowManager, MosaicNode } from '@/shared/types';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React, { useContext } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,6 +27,9 @@ const mockMosaicActions = {
   updateTree: vi.fn(),
   getRoot: vi.fn(() => 'a' as MosaicNode<string> | null),
   add: vi.fn(),
+  maximize: vi.fn(),
+  restore: vi.fn(),
+  isMaximized: vi.fn(() => false),
 };
 
 function renderWindow(props: Partial<React.ComponentProps<typeof MosaicWindow<string>>> = {}) {
@@ -41,6 +44,27 @@ function renderWindow(props: Partial<React.ComponentProps<typeof MosaicWindow<st
       <MosaicWindow title="Test Window" path={['first']} {...props}>
         <div data-testid="child-content">child</div>
       </MosaicWindow>
+    </MosaicContext.Provider>,
+  );
+}
+
+function renderWindowWithManager(
+  manager: ActiveWindowManager,
+  props: Partial<React.ComponentProps<typeof MosaicWindow<string>>> = {},
+) {
+  return render(
+    <MosaicContext.Provider
+      value={{
+        mosaicActions: mockMosaicActions,
+        mosaicId: 'test-mosaic',
+        renderTile: () => <></>,
+      }}
+    >
+      <ActiveWindowContext.Provider value={manager}>
+        <MosaicWindow title="Test Window" path={['first']} {...props}>
+          <div data-testid="child-content">child</div>
+        </MosaicWindow>
+      </ActiveWindowContext.Provider>
     </MosaicContext.Provider>,
   );
 }
@@ -77,11 +101,12 @@ describe('MosaicWindow', () => {
       expect(screen.queryByTitle('Close')).not.toBeInTheDocument();
     });
 
-    it('renders Split, Replace, Expand buttons when createNode is provided', () => {
+    it('renders Split, Replace, Expand, Maximize buttons when createNode is provided', () => {
       renderWindow({ createNode: () => 'new' });
       expect(screen.getByTitle('Split')).toBeInTheDocument();
       expect(screen.getByTitle('Replace')).toBeInTheDocument();
       expect(screen.getByTitle('Expand')).toBeInTheDocument();
+      expect(screen.getByTitle('Maximize')).toBeInTheDocument();
     });
 
     it('does NOT render Split/Replace buttons when createNode is absent', () => {
@@ -119,6 +144,19 @@ describe('MosaicWindow', () => {
       expect(body).not.toBeNull();
       expect(body).toHaveClass('my-body');
     });
+
+    it('window root has role=region with aria-label defaulting to title', () => {
+      const { container } = renderWindow({ title: 'Logs' });
+      const region = container.querySelector('.rm-mosaic-window') as HTMLElement;
+      expect(region.getAttribute('role')).toBe('region');
+      expect(region.getAttribute('aria-label')).toBe('Logs');
+    });
+
+    it('window root uses a custom ariaLabel when provided', () => {
+      const { container } = renderWindow({ title: 'Logs', ariaLabel: 'Server logs panel' });
+      const region = container.querySelector('.rm-mosaic-window') as HTMLElement;
+      expect(region.getAttribute('aria-label')).toBe('Server logs panel');
+    });
   });
 
   describe('toolbar actions', () => {
@@ -136,6 +174,22 @@ describe('MosaicWindow', () => {
       renderWindow({ path: ['first'], createNode: () => 'new' });
       fireEvent.click(screen.getByTitle('Expand'));
       expect(mockMosaicActions.expand).toHaveBeenCalledWith(['first']);
+    });
+
+    it('Maximize button calls mosaicActions.maximize with path when not maximized', () => {
+      mockMosaicActions.isMaximized.mockReturnValue(false);
+      renderWindow({ path: ['first'], createNode: () => 'new' });
+      fireEvent.click(screen.getByTitle('Maximize'));
+      expect(mockMosaicActions.maximize).toHaveBeenCalledWith(['first']);
+      expect(mockMosaicActions.restore).not.toHaveBeenCalled();
+    });
+
+    it('Maximize button calls mosaicActions.restore when already maximized', () => {
+      mockMosaicActions.isMaximized.mockReturnValue(true);
+      renderWindow({ path: ['first'], createNode: () => 'new' });
+      fireEvent.click(screen.getByTitle('Maximize'));
+      expect(mockMosaicActions.restore).toHaveBeenCalled();
+      expect(mockMosaicActions.maximize).not.toHaveBeenCalled();
     });
 
     it('Split button calls windowActions.split', async () => {
@@ -593,6 +647,55 @@ describe('MosaicWindow', () => {
 
       expect(captured.length).toBeGreaterThanOrEqual(2);
       expect(captured[0]).toBe(captured[captured.length - 1]);
+    });
+  });
+
+  describe('active-window highlight', () => {
+    function makeManager(): ActiveWindowManager & {
+      activate: ReturnType<typeof vi.fn>;
+      deactivate: ReturnType<typeof vi.fn>;
+    } {
+      return { activate: vi.fn(), deactivate: vi.fn() };
+    }
+
+    it('activates the window on focusin', () => {
+      const manager = makeManager();
+      const { container } = renderWindowWithManager(manager);
+      const root = container.querySelector('.rm-mosaic-window') as HTMLElement;
+      fireEvent.focusIn(root);
+      expect(manager.activate).toHaveBeenCalledWith(root);
+    });
+
+    it('activates the window on pointerdown', () => {
+      const manager = makeManager();
+      const { container } = renderWindowWithManager(manager);
+      const root = container.querySelector('.rm-mosaic-window') as HTMLElement;
+      fireEvent.pointerDown(root);
+      expect(manager.activate).toHaveBeenCalledWith(root);
+    });
+
+    it('does not activate when pressing the Close button (no ring on a removed window)', () => {
+      const manager = makeManager();
+      renderWindowWithManager(manager);
+      // pointerDown on Close must not bubble to the window root → no activate.
+      fireEvent.pointerDown(screen.getByTitle('Close'));
+      expect(manager.activate).not.toHaveBeenCalled();
+    });
+
+    it('deactivates on unmount', () => {
+      const manager = makeManager();
+      const { container, unmount } = renderWindowWithManager(manager);
+      const root = container.querySelector('.rm-mosaic-window') as HTMLElement;
+      unmount();
+      expect(manager.deactivate).toHaveBeenCalledWith(root);
+    });
+
+    it('does not attach activation behavior when there is no manager (standalone)', () => {
+      const { container } = renderWindow();
+      const root = container.querySelector('.rm-mosaic-window') as HTMLElement;
+      // No ActiveWindowContext provider → effect early-returns; focus does nothing.
+      expect(() => fireEvent.focusIn(root)).not.toThrow();
+      expect(root.classList.contains('rm-mosaic-window--active')).toBe(false);
     });
   });
 });

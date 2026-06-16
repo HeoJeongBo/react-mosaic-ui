@@ -69,6 +69,23 @@ describe('MosaicLayout', () => {
     expect(screen.getByTitle('Close')).toBeInTheDocument();
   });
 
+  it('forwards hideToolbar / bodyPadding / bodyClassName from the panel config', () => {
+    const { container } = render(
+      <MosaicLayout
+        panels={[
+          makePanel('a', { hideToolbar: true, bodyPadding: 0, bodyClassName: 'flush-body' }),
+        ]}
+      />,
+    );
+    // hideToolbar → no toolbar chrome
+    expect(container.querySelector('.rm-mosaic-window-toolbar')).toBeNull();
+    // bodyClassName + bodyPadding applied to the body
+    const body = container.querySelector('.rm-mosaic-window-body') as HTMLElement;
+    expect(body).not.toBeNull();
+    expect(body).toHaveClass('flush-body');
+    expect(body.style.padding).toBe('0px');
+  });
+
   it('wraps windowContent with Wrapper when Wrapper is provided', () => {
     const Wrapper = ({ children }: { children: React.ReactNode }) => (
       <div data-testid="wrapper">{children}</div>
@@ -219,6 +236,62 @@ describe('MosaicLayout', () => {
 
     it('starts with null (zeroState) when initialNode={null} is provided', () => {
       render(
+        <MosaicLayout
+          panels={[makePanel('a'), makePanel('b')]}
+          initialNode={null}
+          zeroStateView={<div data-testid="zero">empty</div>}
+        />,
+      );
+      expect(screen.getByTestId('zero')).toBeInTheDocument();
+    });
+
+    it('re-initializes the tree and fires onNodeChange when initialNode changes after mount', () => {
+      const onNodeChange = vi.fn();
+      const first: MosaicNode<string> = {
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      };
+      const { rerender } = render(
+        <MosaicLayout
+          panels={[makePanel('a'), makePanel('b')]}
+          initialNode={first}
+          onNodeChange={onNodeChange}
+        />,
+      );
+      onNodeChange.mockClear();
+      const next: MosaicNode<string> = {
+        direction: 'column',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 25,
+      };
+      rerender(
+        <MosaicLayout
+          panels={[makePanel('a'), makePanel('b')]}
+          initialNode={next}
+          onNodeChange={onNodeChange}
+        />,
+      );
+      expect(onNodeChange).toHaveBeenCalledWith(next);
+    });
+
+    it('updates to the zeroState when initialNode changes to null after mount', () => {
+      const first: MosaicNode<string> = {
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      };
+      const { rerender } = render(
+        <MosaicLayout
+          panels={[makePanel('a'), makePanel('b')]}
+          initialNode={first}
+          zeroStateView={<div data-testid="zero">empty</div>}
+        />,
+      );
+      rerender(
         <MosaicLayout
           panels={[makePanel('a'), makePanel('b')]}
           initialNode={null}
@@ -404,6 +477,43 @@ describe('MosaicLayout', () => {
       expect(unmountCountA).toBe(0);
       expect(unmountCountB).toBe(1);
     });
+
+    // The recursive renderer keys each leaf/branch by a stable leaf id
+    // (mosaic-root.tsx `nodeKey`) so React reuses the same tile + portal anchor
+    // when a leaf moves to a new depth on a reshape — preventing the panel-content
+    // remount/flash seen in the browser. jsdom does not reproduce the portal
+    // detach itself, so this asserts the keyed reconciliation it relies on: the
+    // panel content stays in the document across an add and a remove.
+    it('keeps panel content attached across add and remove reshuffles', () => {
+      const getDirection = () => 'row' as const;
+      const { rerender } = render(
+        <MosaicLayout
+          panels={[makePanel('a', { content: <div data-testid="ca">A</div> })]}
+          getDirection={getDirection}
+        />,
+      );
+      expect(screen.getByTestId('ca')).toBeInTheDocument();
+      // Add two more → existing leaf 'a' changes depth on each reshape.
+      rerender(
+        <MosaicLayout
+          panels={[
+            makePanel('a', { content: <div data-testid="ca">A</div> }),
+            makePanel('b'),
+            makePanel('c'),
+          ]}
+          getDirection={getDirection}
+        />,
+      );
+      expect(screen.getByTestId('ca')).toBeInTheDocument();
+      // Remove the middle one → 'a' moves up a level.
+      rerender(
+        <MosaicLayout
+          panels={[makePanel('a', { content: <div data-testid="ca">A</div> }), makePanel('c')]}
+          getDirection={getDirection}
+        />,
+      );
+      expect(screen.getByTestId('ca')).toBeInTheDocument();
+    });
   });
 
   it('onChange: currentNode updates when mosaicActions.updateTree is called', () => {
@@ -441,12 +551,23 @@ describe('MosaicLayout', () => {
   });
 
   describe('getDirection prop', () => {
-    it('기본값은 항상 row (수평 splitter)', async () => {
+    it('기본값(getDirection 없음): 짝수 카운트는 row (수평 splitter)', async () => {
       const { rerender } = render(<MosaicLayout panels={[makePanel('a')]} />);
       rerender(<MosaicLayout panels={[makePanel('a'), makePanel('b')]} />);
-      // row direction → vertical split bar → cursor-col-resize
+      // nextCount=2 → row direction → vertical split bar → cursor-col-resize
       await waitFor(() => {
         expect(document.querySelector('.rm-cursor-col-resize')).toBeInTheDocument();
+      });
+    });
+
+    it('기본값(getDirection 없음): 홀수 카운트는 column (수직 splitter)', async () => {
+      // No getDirection → default alternation: nextCount=2 row, nextCount=3 column.
+      const { rerender } = render(<MosaicLayout panels={[makePanel('a')]} />);
+      rerender(<MosaicLayout panels={[makePanel('a'), makePanel('b')]} />);
+      rerender(<MosaicLayout panels={[makePanel('a'), makePanel('b'), makePanel('c')]} />);
+      // top-level split is column → horizontal split bar → cursor-row-resize
+      await waitFor(() => {
+        expect(document.querySelector('.rm-cursor-row-resize')).toBeInTheDocument();
       });
     });
 

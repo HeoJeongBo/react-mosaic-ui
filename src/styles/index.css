@@ -27,6 +27,11 @@
   --rm-window-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
   --rm-window-body-padding: 1rem;
 
+  /* Active-window highlight (static ring, no animation) */
+  --rm-active-color: #3b82f6;
+  --rm-window-active-border: 0 0 0 2px var(--rm-active-color);
+  --rm-window-active-shadow: 0 0 0 4px rgb(59 130 246 / 0.18);
+
   --z-mosaic: 1000;
 }
 
@@ -107,6 +112,16 @@
   flex: 1;
   overflow: auto;
   padding: var(--rm-window-body-padding);
+}
+
+/* Active (focused) window: a stacked box-shadow ring — no layout shift, follows
+   the window's border-radius, no animation. Toggled imperatively
+   (.rm-mosaic-window--active). */
+.rm-mosaic-window--active {
+  box-shadow:
+    var(--rm-window-active-border),
+    var(--rm-window-active-shadow),
+    var(--rm-window-shadow);
 }
 
 /* Drawer beneath the toolbar that hosts additionalControls. */

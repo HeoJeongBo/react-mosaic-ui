@@ -54,6 +54,23 @@ describe('Split', () => {
       const { container } = renderSplit();
       expect(container.firstChild).toHaveClass('rm-mosaic-split');
     });
+
+    it('exposes a separator role with vertical orientation for row direction', () => {
+      const { container } = renderSplit({ direction: 'row', percentage: 50 });
+      const el = container.firstChild as HTMLElement;
+      expect(el.getAttribute('role')).toBe('separator');
+      expect(el.getAttribute('aria-orientation')).toBe('vertical');
+      expect(el.getAttribute('aria-valuenow')).toBe('50');
+      expect(el.getAttribute('aria-valuemin')).toBe('20');
+      expect(el.getAttribute('aria-valuemax')).toBe('80');
+      expect(el.getAttribute('tabindex')).toBe('0');
+    });
+
+    it('exposes horizontal orientation for column direction', () => {
+      const { container } = renderSplit({ direction: 'column' });
+      const el = container.firstChild as HTMLElement;
+      expect(el.getAttribute('aria-orientation')).toBe('horizontal');
+    });
   });
 
   describe('mouse drag', () => {

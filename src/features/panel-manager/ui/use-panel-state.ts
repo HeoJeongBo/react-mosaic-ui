@@ -14,6 +14,19 @@ function resolveDefault<T>(defaultState: T | (() => T)): T {
   return typeof defaultState === 'function' ? (defaultState as () => T)() : defaultState;
 }
 
+/**
+ * Per-panel state that persists as part of a `usePersistedLayout()` layout.
+ *
+ * Returns a `[state, setState]` tuple like `useState`. Inside a panel rendered by
+ * a `MosaicLayout` wrapped in the `PanelStateProvider` (with a `panelId`), the
+ * state is stored in the shared layout store and saved with the layout. Outside a
+ * provider — or without a `panelId` — it transparently falls back to local
+ * component state (and warns once in development).
+ *
+ * @param options.defaultState Initial state, or a lazy initializer.
+ * @param options.version Storage version; bump when the state shape changes.
+ * @param options.migrate Maps a persisted value from an older version to the current shape.
+ */
 export function usePanelState<T>(
   options: UsePanelStateOptions<T>,
 ): [T, (updater: T | ((prev: T) => T)) => void] {
@@ -44,6 +57,9 @@ export function usePanelState<T>(
     }
   }
   const [, forceRender] = useReducer((x: number) => x + 1, 0);
+  // Stable subscriber identity so the subscribe effect never re-runs just because
+  // the component re-rendered (forceRender from useReducer is already stable).
+  const notify = useCallback(() => forceRender(), []);
 
   // Register defaults synchronously during render (idempotent — no-op if already registered).
   // This mirrors React's useState initializer: safe to call during render because it only
@@ -61,14 +77,13 @@ export function usePanelState<T>(
   // Subscribe to store updates so this component re-renders when its slice changes.
   useEffect(() => {
     if (!panelIdStr || !ctx) return;
-    const notify = () => forceRender();
     const subs = ctx.subscribersRef.current;
     if (!subs.has(panelIdStr)) subs.set(panelIdStr, new Set());
     subs.get(panelIdStr)!.add(notify);
     return () => {
       subs.get(panelIdStr)?.delete(notify);
     };
-  }, [panelIdStr, ctx]);
+  }, [panelIdStr, ctx, notify]);
 
   const setState = useCallback(
     (updater: T | ((prev: T) => T)) => {
@@ -93,5 +108,6 @@ export function usePanelState<T>(
   }
 
   const storedState = ctx.actions.getState(panelIdStr) as T | undefined;
+  /* v8 ignore next 1 -- registerDefaults always seeds the store during render for a valid panelId+ctx, so storedState is never undefined here; the fallback is defensive */
   return [storedState ?? resolveDefault(defaultState), setState];
 }

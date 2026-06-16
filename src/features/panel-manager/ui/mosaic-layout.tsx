@@ -31,15 +31,23 @@ function getPathToLeaf<T extends MosaicKey>(
   );
 }
 
+/** Picks the split direction for a newly added panel, given the resulting leaf count. */
 export type GetDirectionFn = (nextCount: number) => MosaicDirection;
 
+/** Props for {@link MosaicLayout} — the high-level, panel-config-driven wrapper around {@link Mosaic}. */
 export interface MosaicLayoutProps<TId extends MosaicKey = string>
   extends Omit<MosaicProps<TId>, 'renderTile' | 'value' | 'onChange' | 'initialValue'> {
+  /** Panels to render. Each panel's content is portaled into a stable anchor so it never unmounts on reshuffle. */
   panels: MosaicPanelConfig<TId>[];
+  /** Extra class applied to the underlying `.react-mosaic` container. */
   className?: string;
+  /** Initial tree. Changing it after mount re-initializes the layout without a remount (e.g. after reset). */
   initialNode?: MosaicNode<TId> | null;
+  /** Chooses the split direction for newly added panels. Defaults to alternating row/column. */
   getDirection?: GetDirectionFn;
+  /** Called when a panel disappears from the tree. */
   onPanelClose?: (id: TId) => void;
+  /** Called on every tree change; wire this to `usePersistedLayout().onNodeChange` to track the live tree. */
   onNodeChange?: (node: MosaicNode<TId> | null) => void;
 }
 
@@ -129,6 +137,12 @@ function AnchorSlot({ anchor }: { anchor: HTMLDivElement }) {
   return <div ref={hostRef} style={{ width: '100%', height: '100%' }} />;
 }
 
+/**
+ * High-level mosaic driven by a list of {@link MosaicPanelConfig} instead of a
+ * manual tree + `renderTile`. Handles tree initialization, panel add/remove
+ * reconciliation, and stable-anchor portals so panel content never unmounts when
+ * the tree reshuffles.
+ */
 export function MosaicLayout<TId extends MosaicKey = string>({
   panels,
   className,

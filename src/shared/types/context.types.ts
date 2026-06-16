@@ -46,6 +46,25 @@ export interface MosaicRootActions<T extends MosaicKey = string> {
    * Preserves all existing subtree references so memoized renderers skip re-render.
    */
   add: (newNode: T, direction?: MosaicDirection) => void;
+
+  /**
+   * Maximize the tile at `path`: render only that leaf, remembering the previous
+   * full tree so {@link restore} can put it back. No-op for the root path or a
+   * missing path. Works in controlled mode (the captured tree is emitted via
+   * onChange on restore).
+   */
+  maximize: (path: MosaicPath) => void;
+
+  /**
+   * Restore the tree captured by the last {@link maximize} call. No-op when
+   * nothing is currently maximized.
+   */
+  restore: () => void;
+
+  /**
+   * Whether a tile is currently maximized (between a maximize and a restore).
+   */
+  isMaximized: () => boolean;
 }
 
 /**
@@ -84,4 +103,17 @@ export interface MosaicWindowContextValue {
   mosaicWindowActions: MosaicWindowActions;
   /** The leaf ID of this window in the mosaic tree. Provided by MosaicLayout; undefined when MosaicWindow is used standalone. */
   panelId?: MosaicKey;
+}
+
+/**
+ * Imperative tracker for the currently-active (focused) window. Toggles the
+ * `.rm-mosaic-window--active` class directly on the DOM so activating a window
+ * never triggers a React re-render. Internal — provided by Mosaic via
+ * ActiveWindowContext.
+ */
+export interface ActiveWindowManager {
+  /** Mark `el` as the active window (clears the previously-active one). */
+  activate: (el: HTMLElement | null) => void;
+  /** Clear `el`'s active state; used when a window unmounts while active. */
+  deactivate: (el: HTMLElement) => void;
 }

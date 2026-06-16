@@ -82,6 +82,44 @@ describe('usePersistedLayout', () => {
     );
   });
 
+  it('restores a v2 payload (tree + panel states)', () => {
+    const tree: MosaicNode<string> = {
+      direction: 'row',
+      first: 'alpha',
+      second: 'beta',
+      splitPercentage: 50,
+    };
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        version: 2,
+        tree,
+        panelStates: { alpha: { state: { open: true }, version: 1 } },
+      }),
+    );
+    const { result } = renderHook(() =>
+      usePersistedLayout({ storageKey: KEY, registry: REGISTRY }),
+    );
+    expect(result.current.initialNode).toEqual(tree);
+    expect(new Set(result.current.panels.map((p) => p.id))).toEqual(new Set(['alpha', 'beta']));
+  });
+
+  it('restores a v2 payload missing panelStates (defaults to empty)', () => {
+    localStorage.setItem(KEY, JSON.stringify({ version: 2, tree: 'alpha' }));
+    const { result } = renderHook(() =>
+      usePersistedLayout({ storageKey: KEY, registry: REGISTRY }),
+    );
+    expect(result.current.initialNode).toBe('alpha');
+  });
+
+  it('restores a v2 payload with a null tree', () => {
+    localStorage.setItem(KEY, JSON.stringify({ version: 2, tree: null, panelStates: {} }));
+    const { result } = renderHook(() =>
+      usePersistedLayout({ storageKey: KEY, registry: REGISTRY }),
+    );
+    expect(result.current.initialNode).toBeNull();
+  });
+
   it('drops stale ids and collapses the split', () => {
     seed({ direction: 'row', first: 'alpha', second: 'ghost', splitPercentage: 40 });
     const { result } = renderHook(() =>
@@ -621,6 +659,89 @@ describe('usePersistedLayout', () => {
       act(() => result.current.resetLayout());
       // initialNode should now reflect the default (alpha only)
       expect(new Set(getLeaves(result.current.initialNode))).toEqual(new Set(['alpha']));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // PanelStateProvider render path
+  // ---------------------------------------------------------------------------
+
+  describe('PanelStateProvider', () => {
+    it('renders its children inside the panel-state context', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY }),
+      );
+      const Provider = result.current.PanelStateProvider;
+      const { getByTestId } = render(
+        <Provider>
+          <div data-testid="child">child</div>
+        </Provider>,
+      );
+      expect(getByTestId('child')).toBeInTheDocument();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // autoSaveDelayMs (opt-in debounced persistence)
+  // ---------------------------------------------------------------------------
+
+  describe('autoSaveDelayMs', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('persists after the delay once the tree changes', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, autoSaveDelayMs: 500 }),
+      );
+      act(() => result.current.onNodeChange('alpha'));
+      expect(localStorage.getItem(KEY)).toBeNull();
+      act(() => vi.advanceTimersByTime(500));
+      expect(localStorage.getItem(KEY)).not.toBeNull();
+      expect(result.current.isDirty).toBe(false);
+    });
+
+    it('debounces rapid changes into a single write', () => {
+      const setItem = vi.spyOn(Storage.prototype, 'setItem');
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, autoSaveDelayMs: 500 }),
+      );
+      act(() => result.current.onNodeChange('alpha'));
+      act(() => vi.advanceTimersByTime(200));
+      act(() => result.current.onNodeChange('beta'));
+      act(() => vi.advanceTimersByTime(500));
+      expect(setItem).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not auto-save when the option is undefined', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY }),
+      );
+      act(() => result.current.onNodeChange('alpha'));
+      act(() => vi.advanceTimersByTime(10_000));
+      expect(localStorage.getItem(KEY)).toBeNull();
+    });
+
+    it('does not auto-save while the layout is not dirty', () => {
+      renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, autoSaveDelayMs: 500 }),
+      );
+      act(() => vi.advanceTimersByTime(500));
+      expect(localStorage.getItem(KEY)).toBeNull();
+    });
+
+    it('clears the pending timer on unmount', () => {
+      const setItem = vi.spyOn(Storage.prototype, 'setItem');
+      const { result, unmount } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, autoSaveDelayMs: 500 }),
+      );
+      act(() => result.current.onNodeChange('alpha'));
+      unmount();
+      act(() => vi.advanceTimersByTime(500));
+      expect(setItem).not.toHaveBeenCalled();
     });
   });
 });

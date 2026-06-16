@@ -1,7 +1,7 @@
 import { createBalancedTreeFromLeaves, getLeaves, pruneTree } from '@/shared/lib';
 import type { MosaicKey, MosaicNode, MosaicPanelConfig } from '@/shared/types';
 import type { ComponentType, ReactNode } from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   PanelStateContext,
   createPanelStateContextValue,
@@ -53,6 +53,13 @@ export interface UsePersistedLayoutOptions<TId extends MosaicKey = string> {
   titles?: Partial<Record<TId, string>>;
   /** Panels to show on a clean first run (no stored data). Defaults to all registry keys. */
   defaultPanelIds?: TId[];
+  /**
+   * When set, debounce-persist the layout this many milliseconds after the tree
+   * changes — no need to call `saveLayout()` manually. Opt-in: when `undefined`
+   * (the default) saving stays fully manual. `saveLayout()` continues to work and
+   * resets the pending debounce. Panel state edits are captured at save time.
+   */
+  autoSaveDelayMs?: number;
 
   // ---------------------------------------------------------------------------
   // Lifecycle callbacks — all optional. Stored in refs so they never need to be
@@ -217,6 +224,15 @@ function readPersisted<TId extends MosaicKey>(
   };
 }
 
+/**
+ * Persists a {@link MosaicLayout} (tree + per-panel state) to `localStorage`.
+ *
+ * Panels are described by a `registry` mapping each id to its component(s); only
+ * panel ids and the tree (with split percentages) are stored, and the registry
+ * rebuilds the panel configs on restore. Saving is manual via `saveLayout()` by
+ * default; pass `autoSaveDelayMs` to debounce-save automatically. Wrap
+ * `<MosaicLayout>` with the returned `PanelStateProvider` to enable `usePanelState`.
+ */
 export function usePersistedLayout<TId extends MosaicKey = string>(
   options: UsePersistedLayoutOptions<TId>,
 ): UsePersistedLayoutResult<TId> {
@@ -230,6 +246,7 @@ export function usePersistedLayout<TId extends MosaicKey = string>(
     onPanelOpen,
     onPanelClose,
     onNodeChange: onNodeChangeProp,
+    autoSaveDelayMs,
   } = options;
 
   // Store callbacks in refs so they never need to be listed as deps.
@@ -310,6 +327,18 @@ export function usePersistedLayout<TId extends MosaicKey = string>(
     setIsDirty(false);
     onSaveRef.current?.(liveTreeRef.current);
   }, [storageKey, panelStateContextValue]);
+
+  // Opt-in auto-save: when autoSaveDelayMs is set, debounce-persist after the tree
+  // becomes dirty. Each dirty transition (re)arms the timer; the cleanup clears the
+  // previous timer (debounce) and any pending save on unmount. Reads saveLayout from
+  // a ref so a new saveLayout identity does not re-arm the timer.
+  const saveLayoutRef = useRef(saveLayout);
+  saveLayoutRef.current = saveLayout;
+  useEffect(() => {
+    if (autoSaveDelayMs === undefined || !isDirty) return;
+    const timer = setTimeout(() => saveLayoutRef.current(), autoSaveDelayMs);
+    return () => clearTimeout(timer);
+  }, [autoSaveDelayMs, isDirty]);
 
   const addPanel = useCallback(
     (id: TId) => {

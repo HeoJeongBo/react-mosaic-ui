@@ -1,5 +1,5 @@
 import { arePathsEqual, getNodeAtPath } from '@/shared/lib';
-import { MosaicContext, MosaicWindowContext } from '@/shared/lib/context';
+import { ActiveWindowContext, MosaicContext, MosaicWindowContext } from '@/shared/lib/context';
 import type {
   CreateNode,
   DragBindings,
@@ -9,7 +9,15 @@ import type {
 } from '@/shared/types';
 import type { MosaicWindowActions } from '@/shared/types';
 import classNames from 'classnames';
-import React, { type ReactNode, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, {
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useDrag } from 'react-dnd';
 
 const DRAG_ITEM_TYPE = 'MosaicWindow';
@@ -18,17 +26,31 @@ const DRAG_ITEM_TYPE = 'MosaicWindow';
 const MOSAIC_WINDOW_SKIP_KEYS = new Set<string>(['path', 'onDragStart', 'onDragEnd']);
 const MOSAIC_TOOLBAR_SKIP_KEYS = new Set<string>(['path']);
 
+/**
+ * Props for {@link MosaicWindow} — the chrome (toolbar + body) wrapped around a tile.
+ */
 export interface MosaicWindowProps<T extends MosaicKey> {
+  /** Title shown in the toolbar and used as the default accessible label. */
   title: string;
+  /** Position of this window in the tree (received from `renderTile`). */
   path: MosaicPath;
+  /** Window body content. */
   children: ReactNode;
+  /** Factory for new tiles. Providing it enables the Split/Replace/Maximize toolbar buttons. */
   createNode?: CreateNode<T>;
+  /** Extra controls rendered before the built-in toolbar buttons. */
   toolbarControls?: ReactNode;
+  /** Controls shown in a collapsible drawer toggled by the “More” (⋯) button. */
   additionalControls?: ReactNode;
+  /** Full toolbar override; receives the default toolbar as the second argument. Return `null` for no toolbar. */
   renderToolbar?: (props: MosaicWindowToolbarProps<T>, defaultToolbar: ReactNode) => ReactNode;
+  /** Called when a drag of this window begins. */
   onDragStart?: () => void;
+  /** Called when a drag of this window ends (`'drop'` if it landed, `'reset'` otherwise). */
   onDragEnd?: (type: 'drop' | 'reset') => void;
+  /** Extra class applied to the window root element. */
   className?: string;
+  /** Show the Close (✕) button. Defaults to `true`. */
   closable?: boolean;
   /** When true, render no toolbar at all (no chrome, full bleed). */
   hideToolbar?: boolean;
@@ -36,6 +58,8 @@ export interface MosaicWindowProps<T extends MosaicKey> {
   bodyClassName?: string;
   /** Inline padding override for the window body. Wins over CSS without !important. */
   bodyPadding?: string | number;
+  /** Accessible label for this window's region. Defaults to `title`. */
+  ariaLabel?: string;
   /** Leaf ID of this window in the mosaic tree. Supplied by MosaicLayout for panel state persistence. */
   panelId?: T;
 }
@@ -66,9 +90,33 @@ const MosaicWindowImpl = <T extends MosaicKey>({
   hideToolbar,
   bodyClassName,
   bodyPadding,
+  ariaLabel,
   panelId,
 }: MosaicWindowProps<T>) => {
   const { mosaicActions, mosaicId } = useContext(MosaicContext);
+  const activeWindowManager = useContext(ActiveWindowContext);
+
+  // Root element ref — used to mark this window active on focus/pointer-down.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (el === null || activeWindowManager === null) return;
+    const onActivate = (e: Event) => {
+      // Skip activation for controls that opt out (e.g. Close) so an
+      // about-to-be-removed window is not marked active just before it unmounts.
+      if ((e.target as HTMLElement | null)?.closest('[data-rm-no-activate]')) return;
+      activeWindowManager.activate(el);
+    };
+    // focusin (bubbles) covers keyboard/programmatic focus into any descendant;
+    // pointerdown covers clicks on non-focusable body content.
+    el.addEventListener('focusin', onActivate);
+    el.addEventListener('pointerdown', onActivate);
+    return () => {
+      el.removeEventListener('focusin', onActivate);
+      el.removeEventListener('pointerdown', onActivate);
+      activeWindowManager.deactivate(el);
+    };
+  }, [activeWindowManager]);
 
   // Store props in refs so windowActions / useDrag never need to be recreated.
   const pathRef = useRef(path);
@@ -108,9 +156,11 @@ const MosaicWindowImpl = <T extends MosaicKey>({
     () => ({
       split: async () => {
         const currentCreateNode = createNodeRef.current;
-        /* v8 ignore next 3 -- split is only triggered via the Split button which requires createNode */
+        /* v8 ignore next 5 -- split is only triggered via the Split button which requires createNode */
         if (!currentCreateNode) {
-          throw new Error('createNode is required for split operation');
+          throw new Error(
+            'Split requires a `createNode` factory on <MosaicWindow>. Provide createNode to enable the Split button.',
+          );
         }
         const newNode = await currentCreateNode();
         const root = mosaicActions.getRoot();
@@ -128,9 +178,11 @@ const MosaicWindowImpl = <T extends MosaicKey>({
       },
       replaceWithNew: async () => {
         const currentCreateNode = createNodeRef.current;
-        /* v8 ignore next 3 -- replaceWithNew is only called via the Replace button which requires createNode */
+        /* v8 ignore next 5 -- replaceWithNew is only called via the Replace button which requires createNode */
         if (!currentCreateNode) {
-          throw new Error('createNode is required for replace operation');
+          throw new Error(
+            'Replace requires a `createNode` factory on <MosaicWindow>. Provide createNode to enable the Replace button.',
+          );
         }
         const newNode = await currentCreateNode();
         mosaicActions.replaceWith(pathRef.current, newNode);
@@ -168,7 +220,13 @@ const MosaicWindowImpl = <T extends MosaicKey>({
 
   return (
     <MosaicWindowContext.Provider value={contextValue}>
-      <div className={classNames('rm-mosaic-window', className)}>
+      <div
+        ref={rootRef}
+        className={classNames('rm-mosaic-window', className)}
+        // biome-ignore lint/a11y/useSemanticElements: .rm-mosaic-window is the public element consumers style; role="region" gives the same semantics without changing the div DOM contract.
+        role="region"
+        aria-label={ariaLabel ?? title}
+      >
         {toolbar}
         <div
           className={classNames('rm-mosaic-window-body', bodyClassName)}
@@ -239,6 +297,14 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
     }
   }, [mosaicWindowActions]);
 
+  const handleMaximize = useCallback(() => {
+    if (mosaicActions.isMaximized()) {
+      mosaicActions.restore();
+    } else {
+      mosaicActions.maximize(pathRef.current);
+    }
+  }, [mosaicActions]);
+
   const toggleDrawer = useCallback(() => {
     setIsDrawerOpen((prev) => !prev);
   }, []);
@@ -258,6 +324,7 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
                 className="rm-mosaic-button"
                 onClick={handleReplace}
                 title="Replace"
+                aria-label="Replace"
               >
                 ↻
               </button>
@@ -266,6 +333,7 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
                 className="rm-mosaic-button"
                 onClick={handleSplit}
                 title="Split"
+                aria-label="Split"
               >
                 ⊞
               </button>
@@ -274,8 +342,18 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
                 className="rm-mosaic-button"
                 onClick={handleExpand}
                 title="Expand"
+                aria-label="Expand"
               >
                 ⛶
+              </button>
+              <button
+                type="button"
+                className="rm-mosaic-button"
+                onClick={handleMaximize}
+                title="Maximize"
+                aria-label="Maximize"
+              >
+                ⤢
               </button>
             </>
           )}
@@ -284,13 +362,22 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
               type="button"
               className="rm-mosaic-button rm-mosaic-button--close"
               onClick={handleRemove}
+              // Don't let the close click mark this (about-to-be-removed) window active.
+              data-rm-no-activate=""
               title="Close"
+              aria-label="Close"
             >
               ✕
             </button>
           )}
           {additionalControls && (
-            <button type="button" className="rm-mosaic-button" onClick={toggleDrawer} title="More">
+            <button
+              type="button"
+              className="rm-mosaic-button"
+              onClick={toggleDrawer}
+              title="More"
+              aria-label="More"
+            >
               ⋯
             </button>
           )}

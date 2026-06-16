@@ -1,5 +1,7 @@
 # react-mosaic-ui
 
+![coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
+
 A modern React tiling window manager with drag-and-drop, resizable splits, and full TypeScript support.
 
 > Inspired by [react-mosaic](https://github.com/nomcopter/react-mosaic)
@@ -209,7 +211,7 @@ removePanel('logs');
 
 ### `usePersistedLayout<T>()`
 
-Saves the layout to `localStorage` and restores it on reload. Panels are described by a **registry** that maps each id to its component(s) — only panel ids and the tree (with split percentages) are persisted, and the registry rebuilds the `MosaicPanelConfig`s on restore. Saving is **manual** (`saveLayout()`); restoring is automatic on mount.
+Saves the layout to `localStorage` and restores it on reload. Panels are described by a **registry** that maps each id to its component(s) — only panel ids and the tree (with split percentages) are persisted, and the registry rebuilds the `MosaicPanelConfig`s on restore. Saving is **manual** (`saveLayout()`) by default; pass `autoSaveDelayMs` to debounce-save automatically. Restoring is automatic on mount.
 
 The registry shape mirrors a real-world config map, so an existing one can be passed as-is:
 
@@ -230,6 +232,7 @@ The registry shape mirrors a real-world config map, so an existing one can be pa
 | `registry` | `PersistedLayoutRegistry<T>` | required — `Record<T, PersistedPanelEntry>` |
 | `titles` | `Partial<Record<T, string>>` | Optional id → window title map; falls back to `String(id)` |
 | `defaultPanelIds` | `T[]` | Panels shown on a clean first run; defaults to all registry keys |
+| `autoSaveDelayMs` | `number` | Opt-in: debounce-persist this many ms after the tree changes (no manual `saveLayout()` needed) |
 
 **Return**
 
@@ -293,6 +296,8 @@ function Dashboard() {
 | `mosaicId` | `string` | auto | ID for multi-mosaic DnD isolation |
 | `createNode` | `() => T \| Promise<T>` | — | Factory for new tiles (enables split/replace) |
 | `resize` | `ResizeOptions` | — | Override minimum pane size |
+| `ariaLabel` | `string` | `"Mosaic layout"` | Accessible label for the container (`role="group"`) |
+| `highlightActive` | `boolean` | `true` | Highlight the focused window with a ring |
 
 ### `<MosaicWindow>`
 
@@ -320,6 +325,7 @@ function Dashboard() {
 | Split | Splits the window in half |
 | Replace | Replaces the window with a new tile |
 | Expand | Expands to 70% of the parent |
+| Maximize | Maximizes the tile to fill the layout; click again to restore |
 | Close | Removes the window from the layout |
 
 ### Utility Functions
@@ -411,6 +417,9 @@ const { mosaicActions } = useMosaicContext<number>();
 | `updateTree(updates, suppressOnRelease?)` | Apply multiple updates atomically |
 | `getRoot()` | Get current root node |
 | `add(node, position?)` | Add a new node to the layout |
+| `maximize(path)` | Render only the tile at `path`, remembering the previous tree |
+| `restore()` | Restore the tree captured by the last `maximize()` |
+| `isMaximized()` | Whether a tile is currently maximized |
 
 **`MosaicWindowActions`** (via `useMosaicWindowContext().mosaicWindowActions`):
 
@@ -450,6 +459,11 @@ Override these on `:root` (or any ancestor of the mosaic) to theme the layout. N
   --rm-window-radius: 0.25rem;
   --rm-window-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
   --rm-window-body-padding: 1rem;       /* Inner padding of each window's content */
+
+  /* Active-window highlight (static ring, no animation) */
+  --rm-active-color: #3b82f6;           /* Ring color of the focused window */
+  --rm-window-active-border: 0 0 0 2px var(--rm-active-color);
+  --rm-window-active-shadow: 0 0 0 4px rgb(59 130 246 / 0.18);
 }
 ```
 
@@ -507,6 +521,43 @@ These are also available per-panel on `MosaicLayout` / `usePersistedLayout` pane
 - **No more `!important`.** All styling moved onto single semantic classes with normal specificity. If you previously used `!important` to fight the library's own `!important`, you can remove it — plain overrides now win.
 - **Theming variables renamed to `--rm-*`.** The old `--color-mosaic-*` names still work for one release cycle (they're aliased) but are deprecated; switch to `--rm-border-color`, `--rm-window-bg`, `--rm-toolbar-bg`, `--rm-split-color`, `--rm-split-hover`, `--rm-background`.
 - **Internal utility classes removed.** `rm-flex`, `rm-px-4`, `rm-bg-mosaic-toolbar`, etc. are no longer in `styles.css`. They were never public; if you referenced them, target the semantic classes instead.
+
+## Active panel highlight
+
+When you have several similar (or identical) panels, it can be hard to tell which one
+you're working in. The focused window is highlighted with a persistent ring (no
+animation). It's on by default and toggled imperatively, so it never triggers re-renders.
+
+- Focusing a window (keyboard, programmatic, or clicking anywhere inside it) marks it active.
+  Active state persists as "last focused", like an editor's active pane.
+- Disable globally with `highlightActive={false}` on `<Mosaic>`.
+- Theme with the `--rm-active-color`, `--rm-window-active-border`, and `--rm-window-active-shadow`
+  CSS variables.
+
+```tsx
+// Default on:
+<Mosaic value={tree} onChange={setTree} renderTile={renderTile} />
+
+// Off:
+<Mosaic value={tree} onChange={setTree} renderTile={renderTile} highlightActive={false} />
+```
+
+Style hook: the active window gets `.rm-mosaic-window--active`.
+
+## Accessibility
+
+The library ships sensible ARIA defaults:
+
+- The mosaic container has `role="group"` and an `aria-label` (default `"Mosaic layout"`, override with the `ariaLabel` prop on `<Mosaic>`).
+- Each window has `role="region"` and an `aria-label` defaulting to its `title` (override per window with the `ariaLabel` prop on `<MosaicWindow>`).
+- Resize handles have `role="separator"`, `aria-orientation`, `aria-valuenow/min/max`, and are focusable (`tabIndex={0}`).
+- Toolbar buttons carry `aria-label`s matching their action (Split, Replace, Expand, Maximize, Close, More).
+- The active-panel highlight is purely visual — a focused window's `role="region"` is already announced, so no extra ARIA is added.
+
+```tsx
+<Mosaic ariaLabel="Dashboard panes" renderTile={...} value={...} onChange={...} />
+<MosaicWindow title="Sales" ariaLabel="Sales chart" path={path}>…</MosaicWindow>
+```
 
 ### Custom toolbar
 
@@ -632,8 +683,11 @@ bun install
 # Build library
 bun run build
 
-# Run tests (367 tests)
+# Run tests
 bun run test
+
+# Run tests with coverage (100% thresholds enforced)
+bun run test:coverage
 
 # Type check
 bun run typecheck
@@ -641,12 +695,31 @@ bun run typecheck
 # Lint
 bun run lint
 
-# Run all checks
+# Run all checks (lint + typecheck + tests)
 bun run check
 
 # Run the example app
 cd example && bun install && bun run dev
 ```
+
+### Testing & coverage
+
+The test suite runs on [Vitest](https://vitest.dev) + Testing Library (jsdom).
+`vitest.config.ts` enforces **100% coverage** thresholds for statements, branches,
+functions, and lines:
+
+```bash
+bun run test:coverage
+```
+
+Notes on what 100% means here:
+
+- `bun run check` runs lint + typecheck + tests; coverage thresholds are enforced
+  separately by `bun run test:coverage`.
+- A small number of genuinely-unreachable defensive guards and drag-and-drop timing
+  branches are annotated with `/* v8 ignore */` and excluded from the count.
+- Barrel `index.ts` files, type-only modules, and the context default object are
+  excluded from instrumentation (see `coverage.exclude` in `vitest.config.ts`).
 
 ### Release
 
