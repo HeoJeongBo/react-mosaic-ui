@@ -43,34 +43,44 @@ export const updateTree = <T extends MosaicKey>(
   return current;
 };
 
+// Applies a structural spec (splitPercentage / direction / nested first|second)
+// to `node` in place, recursing into child specs. Only meaningful for parent nodes.
+const applySpecToNode = <T extends MosaicKey>(
+  node: MosaicNode<T>,
+  spec: MosaicUpdateSpec<T>,
+): void => {
+  /* v8 ignore next 3 -- a root-level $set is handled before applySpecToNode is reached */
+  if ('$set' in spec) {
+    return;
+  }
+  if (isParent(node)) {
+    if (spec.splitPercentage) {
+      node.splitPercentage = spec.splitPercentage.$set;
+    }
+    if (spec.direction) {
+      node.direction = spec.direction.$set;
+    }
+    if (spec.first) {
+      applySpecToNode(node.first, spec.first);
+    }
+    if (spec.second) {
+      applySpecToNode(node.second, spec.second);
+    }
+  }
+};
+
 const applyUpdateAtPath = <T extends MosaicKey>(
   node: MosaicNode<T>,
   path: MosaicPath,
   spec: MosaicUpdateSpec<T>,
 ): void => {
+  // path exhausted: apply the structural spec to this node.
   if (path.length === 0) {
-    /* v8 ignore next 4 -- root-level $set is handled before applyUpdateAtPath is called */
-    if ('$set' in spec) {
-      // This case is handled at the parent level
-      return;
-    }
-    if (isParent(node)) {
-      if (spec.splitPercentage) {
-        node.splitPercentage = spec.splitPercentage.$set;
-      }
-      if (spec.direction) {
-        node.direction = spec.direction.$set;
-      }
-      if (spec.first) {
-        applyUpdateAtPath(node.first, [], spec.first);
-      }
-      if (spec.second) {
-        applyUpdateAtPath(node.second, [], spec.second);
-      }
-    }
+    applySpecToNode(node, spec);
     return;
   }
 
+  // descend one branch toward the target node.
   if (!isParent(node)) {
     return;
   }
@@ -371,8 +381,10 @@ export const updateSplitPercentage = <T extends MosaicKey>(
   if (path.length === 0) {
     return { ...root, splitPercentage: percentage };
   }
+  // root is narrowed to MosaicParent<T> by the isParent guard above, so root[branch]
+  // is already MosaicNode<T> (a declared property, not an index signature).
   const [branch, ...rest] = path as [MosaicBranch, ...MosaicPath];
-  const child = root[branch] as MosaicNode<T>;
+  const child = root[branch];
   const updated = updateSplitPercentage(child, rest, percentage);
   if (updated === child) return root;
   return { ...root, [branch]: updated };
