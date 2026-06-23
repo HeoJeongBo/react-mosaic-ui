@@ -1,5 +1,3 @@
-import { MosaicDropTarget, RootDropTargets } from '@/features/drag-drop';
-import { Split } from '@/features/resize';
 import { isParent } from '@/shared/lib';
 import { areBoundingBoxesEqual, createBoundingBox, split } from '@/shared/lib/bounding-box';
 import { MosaicContext } from '@/shared/lib/context';
@@ -7,6 +5,7 @@ import { arePathsEqual } from '@/shared/lib/mosaic-utilities';
 import type { MosaicKey, MosaicNode, MosaicPath } from '@/shared/types';
 import type { BoundingBox, ResizeOptions } from '@/shared/types';
 import { MosaicDropTargetPosition } from '@/shared/types';
+import { MosaicDropTarget, RootDropTargets, Split } from '@/shared/ui';
 import React, { useCallback, useContext, useMemo, useRef } from 'react';
 
 export interface MosaicRootProps<T extends MosaicKey> {

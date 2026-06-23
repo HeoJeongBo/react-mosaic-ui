@@ -14,12 +14,12 @@ export type {
 export { MosaicWindow } from './entities/window';
 export type { MosaicWindowProps, MosaicWindowToolbarProps } from './entities/window';
 
-// Features
-export { Split } from './features/resize';
-export type { SplitProps } from './features/resize';
+// Shared UI (presentational components that depend only on shared/*)
+export { Split } from './shared/ui';
+export type { SplitProps } from './shared/ui';
 
-export { MosaicDropTarget } from './features/drag-drop';
-export type { MosaicDropTargetProps } from './features/drag-drop';
+export { MosaicDropTarget } from './shared/ui';
+export type { MosaicDropTargetProps } from './shared/ui';
 
 export {
   MosaicLayout,
