@@ -22,7 +22,6 @@ import {
  * that require external props (e.g. `{ robot, itemId }`) to be registered without
  * a wrapper component.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface PersistedPanelEntry<TProps = Record<string, never>> {
   component: ComponentType<TProps>;
   toolbar?: ComponentType;
@@ -36,7 +35,7 @@ export interface PersistedPanelEntry<TProps = Record<string, never>> {
 
 export type PersistedLayoutRegistry<TId extends MosaicKey = string> = Record<
   TId,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: registry erases per-entry prop types by design
   PersistedPanelEntry<any>
 >;
 
@@ -157,9 +156,9 @@ function safeRemoveItem(key: string): void {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function entryToConfig<TId extends MosaicKey>(
   id: TId,
+  // biome-ignore lint/suspicious/noExplicitAny: entry props are intentionally untyped at the registry boundary
   entry: PersistedPanelEntry<any>,
   title: string,
 ): MosaicPanelConfig<TId> {

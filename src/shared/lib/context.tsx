@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react';
 import type { ActiveWindowManager, MosaicContextValue, MosaicWindowContextValue } from '../types';
 import type { MosaicKey } from '../types';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: the default context is shared across all MosaicKey types
 export const MosaicContext = createContext<MosaicContextValue<any>>({
   mosaicActions: {
     expand: () => {},
