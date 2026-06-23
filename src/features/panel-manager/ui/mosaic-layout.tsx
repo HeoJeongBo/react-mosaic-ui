@@ -5,7 +5,7 @@ import {
   createBalancedTreeFromLeaves,
   createRemoveUpdate,
   getLeaves,
-  isParent,
+  getPathToLeaf,
   updateTree,
 } from '@/shared/lib';
 import type {
@@ -18,18 +18,6 @@ import type {
 } from '@/shared/types';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-
-function getPathToLeaf<T extends MosaicKey>(
-  node: MosaicNode<T>,
-  id: T,
-  path: MosaicPath = [],
-): MosaicPath | null {
-  if (!isParent(node)) return node === id ? path : null;
-  return (
-    getPathToLeaf(node.first, id, [...path, 'first']) ??
-    getPathToLeaf(node.second, id, [...path, 'second'])
-  );
-}
 
 /** Picks the split direction for a newly added panel, given the resulting leaf count. */
 export type GetDirectionFn = (nextCount: number) => MosaicDirection;

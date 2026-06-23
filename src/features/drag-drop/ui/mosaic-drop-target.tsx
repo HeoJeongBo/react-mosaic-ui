@@ -1,4 +1,4 @@
-import { canDropOnTarget, createDragToUpdates } from '@/shared/lib';
+import { MOSAIC_DRAG_ITEM_TYPE, canDropOnTarget, createDragToUpdates } from '@/shared/lib';
 import { MosaicContext } from '@/shared/lib/context';
 import type { MosaicDragItem, MosaicDropTargetPosition, MosaicPath } from '@/shared/types';
 import React, { useCallback, useContext, useRef } from 'react';
@@ -10,8 +10,6 @@ export interface MosaicDropTargetProps {
   mosaicId: string;
   hitArea?: 'window' | 'viewport-edge';
 }
-
-const DRAG_ITEM_TYPE = 'MosaicWindow';
 
 const MosaicDropTargetImpl = ({
   position,
@@ -36,7 +34,7 @@ const MosaicDropTargetImpl = ({
   // created once and never recreated — drop connector stays stable across renders.
   const [, drop] = useDrop<MosaicDragItem, void, void>(
     () => ({
-      accept: DRAG_ITEM_TYPE,
+      accept: MOSAIC_DRAG_ITEM_TYPE,
       canDrop: (item) => {
         if (item.mosaicId !== mosaicIdRef.current) return false;
         const root = mosaicActionsRef.current.getRoot();

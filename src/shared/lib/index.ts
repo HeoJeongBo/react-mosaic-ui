@@ -5,6 +5,7 @@ export {
   getNodeAtPath,
   getAndAssertNodeAtPathExists,
   createBalancedTreeFromLeaves,
+  getPathToLeaf,
   getPathToCorner,
   getOtherDirection,
   getOtherBranch,
@@ -33,3 +34,7 @@ export {
   containsPoint,
   areBoundingBoxesEqual,
 } from './bounding-box';
+
+export { MOSAIC_DRAG_ITEM_TYPE } from './constants';
+
+export { shallowEqualSkipping } from './shallow-equal';

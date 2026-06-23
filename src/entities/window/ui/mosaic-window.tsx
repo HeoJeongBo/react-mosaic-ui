@@ -1,4 +1,9 @@
-import { arePathsEqual, getNodeAtPath } from '@/shared/lib';
+import {
+  MOSAIC_DRAG_ITEM_TYPE,
+  arePathsEqual,
+  getNodeAtPath,
+  shallowEqualSkipping,
+} from '@/shared/lib';
 import { ActiveWindowContext, MosaicContext, MosaicWindowContext } from '@/shared/lib/context';
 import type {
   CreateNode,
@@ -19,8 +24,6 @@ import React, {
   useState,
 } from 'react';
 import { useDrag } from 'react-dnd';
-
-const DRAG_ITEM_TYPE = 'MosaicWindow';
 
 // Pre-built key sets for memo comparators — avoids allocating new Set on every comparison call.
 // Callback props are read from refs, so a new function identity never needs a re-render.
@@ -143,7 +146,7 @@ const MosaicWindowImpl = <T extends MosaicKey>({
   // This means MosaicWindowImpl (and its children) never re-render on drag.
   const [, drag] = useDrag<MosaicDragItem, void, void>(
     () => ({
-      type: DRAG_ITEM_TYPE,
+      type: MOSAIC_DRAG_ITEM_TYPE,
       item: () => {
         if (onDragStartRef.current) setTimeout(onDragStartRef.current, 0);
         return { path: pathRef.current, mosaicId };
@@ -252,18 +255,8 @@ const MosaicWindowImpl = <T extends MosaicKey>({
 
 export const MosaicWindow = React.memo(MosaicWindowImpl, (prev, next) => {
   if (!arePathsEqual(prev.path, next.path)) return false;
-
-  // Skip callback props — stored in refs, new references don't need re-renders.
-  for (const key of Object.keys(prev)) {
-    if (MOSAIC_WINDOW_SKIP_KEYS.has(key)) continue;
-    if (prev[key as keyof typeof prev] !== next[key as keyof typeof next]) return false;
-  }
-  for (const key of Object.keys(next)) {
-    if (MOSAIC_WINDOW_SKIP_KEYS.has(key)) continue;
-    if (!(key in prev)) return false;
-  }
-
-  return true;
+  // Callback props in the skip set are stored in refs — new identities don't re-render.
+  return shallowEqualSkipping(prev, next, MOSAIC_WINDOW_SKIP_KEYS);
 }) as typeof MosaicWindowImpl;
 
 const MosaicWindowToolbarImpl = <T extends MosaicKey>({
@@ -417,20 +410,7 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
 
 const MosaicWindowToolbar = React.memo(MosaicWindowToolbarImpl, (prev, next) => {
   if (!arePathsEqual(prev.path, next.path)) return false;
-
   // dragHandle.ref is stable (useDrag ref never changes).
   // isDragging is handled via CSS (.rm-dragging on the root container) — no re-render needed.
-  /* v8 ignore start -- toolbarProps always differ in some value on re-render, so the
-     loop exits early at the inner return; its natural-completion branch is unreachable */
-  for (const key of Object.keys(prev)) {
-    if (MOSAIC_TOOLBAR_SKIP_KEYS.has(key)) continue;
-    if (prev[key as keyof typeof prev] !== next[key as keyof typeof next]) return false;
-  }
-  for (const key of Object.keys(next)) {
-    if (MOSAIC_TOOLBAR_SKIP_KEYS.has(key)) continue;
-    if (!(key in prev)) return false;
-  }
-
-  return true;
+  return shallowEqualSkipping(prev, next, MOSAIC_TOOLBAR_SKIP_KEYS);
 }) as typeof MosaicWindowToolbarImpl;
-/* v8 ignore stop */

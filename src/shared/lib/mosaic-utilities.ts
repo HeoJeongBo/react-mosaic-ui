@@ -138,6 +138,22 @@ export const createBalancedTreeFromLeaves = <T extends MosaicKey>(
 };
 
 /**
+ * Find the path to the leaf with the given id, or `null` when it is not present.
+ * Depth-first, preferring the `first` branch.
+ */
+export const getPathToLeaf = <T extends MosaicKey>(
+  node: MosaicNode<T>,
+  id: T,
+  path: MosaicPath = [],
+): MosaicPath | null => {
+  if (!isParent(node)) return node === id ? path : null;
+  return (
+    getPathToLeaf(node.first, id, [...path, 'first']) ??
+    getPathToLeaf(node.second, id, [...path, 'second'])
+  );
+};
+
+/**
  * Get the path to a corner of the tree
  */
 export const getPathToCorner = <T extends MosaicKey>(
