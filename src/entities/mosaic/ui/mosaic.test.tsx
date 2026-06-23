@@ -255,6 +255,29 @@ describe('Mosaic', () => {
     });
   });
 
+  describe('controlled/uncontrolled transition warning (dev)', () => {
+    it('warns when switching from controlled to uncontrolled', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { rerender } = render(<Mosaic value="a" onChange={() => {}} renderTile={renderTile} />);
+      expect(warnSpy).not.toHaveBeenCalled();
+      rerender(<Mosaic initialValue="a" renderTile={renderTile} />);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('switching from controlled to uncontrolled'),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('warns when switching from uncontrolled to controlled', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { rerender } = render(<Mosaic initialValue="a" renderTile={renderTile} />);
+      rerender(<Mosaic value="a" onChange={() => {}} renderTile={renderTile} />);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('switching from uncontrolled to controlled'),
+      );
+      warnSpy.mockRestore();
+    });
+  });
+
   describe('mosaicActions.remove', () => {
     it('calls onRelease with null when removing last tile', () => {
       const onRelease = vi.fn();

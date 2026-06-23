@@ -10,7 +10,6 @@ import {
 import { ActiveWindowContext, MosaicContext } from '@/shared/lib/context';
 import type {
   ActiveWindowManager,
-  CreateNode,
   MosaicDirection,
   MosaicKey,
   MosaicNode,
@@ -45,8 +44,6 @@ export interface MosaicBaseProps<T extends MosaicKey> {
   zeroStateView?: JSX.Element;
   /** Stable id for this mosaic instance (used to scope drag-and-drop). */
   mosaicId?: string;
-  /** Factory for new tiles, enabling the Split/Replace/Maximize toolbar buttons. */
-  createNode?: CreateNode<T>;
   /** Accessible label for the mosaic container (role="group"). Defaults to "Mosaic layout". */
   ariaLabel?: string;
   /**
@@ -119,6 +116,9 @@ const getBackend = () => {
 /**
  * The core tiling window manager. Renders a binary tree of tiles with drag-and-drop
  * and resize. Works controlled (`value` + `onChange`) or uncontrolled (`initialValue`).
+ *
+ * To enable the Split/Replace/Maximize toolbar buttons on a tile, pass `createNode`
+ * to the `<MosaicWindow>` rendered by your `renderTile` — not to `<Mosaic>`.
  */
 export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
   const {
@@ -137,6 +137,21 @@ export const Mosaic = <T extends MosaicKey>(props: MosaicProps<T>) => {
   const controlled = isControlled(props);
   const controlledRef = useRef(controlled);
   controlledRef.current = controlled;
+
+  // Dev-only footgun guard: switching a Mosaic between controlled (`value`) and
+  // uncontrolled (`initialValue`) after mount is unsupported. `internalValue` is
+  // seeded once from the first-render mode, so a later switch either strands a stale
+  // internal tree (controlled→uncontrolled) or starts ignoring it (uncontrolled→
+  // controlled). React's built-in inputs warn on this; we mirror that here.
+  const prevControlledRef = useRef(controlled);
+  if (process.env.NODE_ENV !== 'production' && prevControlledRef.current !== controlled) {
+    const from = prevControlledRef.current ? 'controlled' : 'uncontrolled';
+    const to = controlled ? 'controlled' : 'uncontrolled';
+    console.warn(
+      `[react-mosaic-ui] Mosaic is switching from ${from} to ${to}. Pick one mode for the component lifetime: controlled (\`value\` + \`onChange\`) or uncontrolled (\`initialValue\`). The switch is ignored and the internal tree may be stale.`,
+    );
+  }
+  prevControlledRef.current = controlled;
 
   const [internalValue, setInternalValue] = useState<MosaicNode<T> | null>(
     controlled ? props.value : props.initialValue,
