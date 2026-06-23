@@ -1,6 +1,6 @@
 import { MosaicDropTarget, RootDropTargets } from '@/features/drag-drop';
 import { Split } from '@/features/resize';
-import { getLeaves, isParent } from '@/shared/lib';
+import { isParent } from '@/shared/lib';
 import { areBoundingBoxesEqual, createBoundingBox, split } from '@/shared/lib/bounding-box';
 import { MosaicContext } from '@/shared/lib/context';
 import { arePathsEqual } from '@/shared/lib/mosaic-utilities';
@@ -23,8 +23,16 @@ const DEFAULT_RESIZE_OPTIONS: ResizeOptions = { minimumPaneSizePercentage: 20 };
 // its first (leftmost/topmost) leaf id — a stable anchor that survives wrapping
 // the subtree in a new parent or another leaf moving into it, so unrelated tiles
 // in the branch aren't remounted while the stable-mount guarantee still holds.
+// Walk down the `first` branches to the leftmost/topmost leaf — exactly
+// getLeaves(node)[0], but O(depth) and allocation-free (no intermediate arrays).
+const firstLeaf = <T extends MosaicKey>(node: MosaicNode<T>): T => {
+  let current = node;
+  while (isParent(current)) current = current.first;
+  return current;
+};
+
 const nodeKey = <T extends MosaicKey>(node: MosaicNode<T>): string =>
-  isParent(node) ? `b:${String(getLeaves(node)[0])}` : `l:${String(node)}`;
+  isParent(node) ? `b:${String(firstLeaf(node))}` : `l:${String(node)}`;
 
 export const MosaicRoot = <T extends MosaicKey>({
   root,
