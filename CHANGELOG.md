@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.1.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v4.0.1...v4.1.0) (2026-06-23)
+
+### Features
+
+* **resize:** keyboard operation + focus-visible for accessibility ([ef34403](https://github.com/HeoJeongBo/react-mosaic-ui/commit/ef34403ddb129b726b7e60baf32297aa7abe276f))
+* **window:** add onError callback for failed Split/Replace actions ([6a57045](https://github.com/HeoJeongBo/react-mosaic-ui/commit/6a57045707e3fa7c73f0213a13bd6c672ba2aa2e))
+
+### Bug Fixes
+
+* **mosaic:** drop dead createNode prop, warn on controlled/uncontrolled switch ([84622b0](https://github.com/HeoJeongBo/react-mosaic-ui/commit/84622b073a8135c0d05b5222afd3bf56584a0d1d))
+* **panel-manager:** guard document access in MosaicLayout for SSR ([0187429](https://github.com/HeoJeongBo/react-mosaic-ui/commit/0187429bbafaed578ab92c65077e2a3d5a5a3e59))
+
+### Performance Improvements
+
+* **mosaic:** O(depth) nodeKey via firstLeaf instead of O(n) getLeaves ([81fcccd](https://github.com/HeoJeongBo/react-mosaic-ui/commit/81fcccdcb01bd42510e0a739e35ba527cf924900))
+* **panel-manager:** build panel paths in one O(n) DFS ([78f9a33](https://github.com/HeoJeongBo/react-mosaic-ui/commit/78f9a33653cf4886e210c42b3bf0d916413e2d67))
+* **panel-manager:** memoize StablePanelList, reuse paths across resize ticks ([eaac32b](https://github.com/HeoJeongBo/react-mosaic-ui/commit/eaac32bba1b124d790465a54478a350620d6354b)), closes [#9](https://github.com/HeoJeongBo/react-mosaic-ui/issues/9)
+
+### Documentation
+
+* fix test-file extension, add PanelStateProvider snippet, clarify contracts ([d3285c9](https://github.com/HeoJeongBo/react-mosaic-ui/commit/d3285c93be861d6c6300fc0dd971703ca5dddf15))
+
+### Styles
+
+* **css:** remove deprecated --color-mosaic-* aliases shipped past v4 ([a2a2873](https://github.com/HeoJeongBo/react-mosaic-ui/commit/a2a287329c967959471b65d0faa2aa3fffcf79aa))
+
+### Code Refactoring
+
+* **entities:** stop re-exporting internal MosaicRoot from the barrel ([0b7c05c](https://github.com/HeoJeongBo/react-mosaic-ui/commit/0b7c05c87302d006485c2534f4ed559085c93704))
+* **fsd:** move Split, MosaicDropTarget, RootDropTargets to shared/ui ([6a0e0fe](https://github.com/HeoJeongBo/react-mosaic-ui/commit/6a0e0fe4d1e4f788bd12574c5fbfe18b472fac5f))
+* **resize:** dedupe Split pointer math into computeNewPercentage ([89b74e8](https://github.com/HeoJeongBo/react-mosaic-ui/commit/89b74e893175a5849f8c44e2041ab7fe995f65e5))
+* reuse BoundingBox type and add isPanelConfig type guard ([7f3b712](https://github.com/HeoJeongBo/react-mosaic-ui/commit/7f3b712f7363de30e2ecc7405fd7b9bf55febd00))
+* **shared:** decompose createDragToUpdates into focused steps ([d71958b](https://github.com/HeoJeongBo/react-mosaic-ui/commit/d71958b21bb372b37db28a23d565360c7c811c26))
+* **shared:** hoist DRAG_ITEM_TYPE, getPathToLeaf, shallow-compare into shared/lib ([067c345](https://github.com/HeoJeongBo/react-mosaic-ui/commit/067c345f894332e3d8c39a621adb35180e0c56ec))
+* **shared:** separate applyUpdateAtPath path-walk from spec-walk ([9f535e4](https://github.com/HeoJeongBo/react-mosaic-ui/commit/9f535e4b3cd347cdea67ea08599fd6281b43e66e))
+* **types:** widen TileRenderer to ReactNode, make window context generic ([8d085b1](https://github.com/HeoJeongBo/react-mosaic-ui/commit/8d085b1845d01d159e0a9e01046416946454997d))
+
+### Build System
+
+* harden package and build config ([07b4564](https://github.com/HeoJeongBo/react-mosaic-ui/commit/07b45647dbf0432aece7b883b5e5123ae92246e2))
+* surface explicit any via biome and migrate stale eslint-disable ([fa74524](https://github.com/HeoJeongBo/react-mosaic-ui/commit/fa7452411c940328b11201b53b85c4f2dd5c35fe))
+
+### Continuous Integration
+
+* add GitHub Actions pipeline (lint, typecheck, coverage, build) ([b588e7f](https://github.com/HeoJeongBo/react-mosaic-ui/commit/b588e7f6f1c82974759ff0b48dca08d0a59a5b29))
+
 ## [4.0.1](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v4.0.0...v4.0.1) (2026-06-16)
 
 ### Features
