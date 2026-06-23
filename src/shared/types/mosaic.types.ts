@@ -97,9 +97,13 @@ export interface MosaicDropData {
 }
 
 /**
- * Render function for tiles
+ * Render function for tiles. Returns `ReactNode` so a tile may legitimately render
+ * `null` (consistent with {@link MosaicPanelConfig.content}).
  */
-export type TileRenderer<T extends MosaicKey = string> = (id: T, path: MosaicPath) => JSX.Element;
+export type TileRenderer<T extends MosaicKey = string> = (
+  id: T,
+  path: MosaicPath,
+) => import('react').ReactNode;
 
 /**
  * Function to create new nodes

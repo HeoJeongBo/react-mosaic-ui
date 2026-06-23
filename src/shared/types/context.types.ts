@@ -99,10 +99,10 @@ export interface MosaicWindowActions {
 /**
  * Context provided by MosaicWindow component
  */
-export interface MosaicWindowContextValue {
+export interface MosaicWindowContextValue<T extends MosaicKey = string> {
   mosaicWindowActions: MosaicWindowActions;
   /** The leaf ID of this window in the mosaic tree. Provided by MosaicLayout; undefined when MosaicWindow is used standalone. */
-  panelId?: MosaicKey;
+  panelId?: T;
 }
 
 /**

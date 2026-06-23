@@ -17,10 +17,11 @@ export const MosaicContext = createContext<MosaicContextValue<any>>({
     isMaximized: () => false,
   },
   mosaicId: 'default',
-  renderTile: () => null as unknown as JSX.Element,
+  renderTile: () => null,
 });
 
-export const MosaicWindowContext = createContext<MosaicWindowContextValue>({
+// biome-ignore lint/suspicious/noExplicitAny: the default context is shared across all MosaicKey types
+export const MosaicWindowContext = createContext<MosaicWindowContextValue<any>>({
   mosaicWindowActions: {
     split: async () => {},
     replaceWithNew: async () => {},
@@ -38,6 +39,8 @@ export function useMosaicContext<T extends MosaicKey = string>(): MosaicContextV
   return useContext(MosaicContext) as MosaicContextValue<T>;
 }
 
-export function useMosaicWindowContext(): MosaicWindowContextValue {
-  return useContext(MosaicWindowContext);
+export function useMosaicWindowContext<
+  T extends MosaicKey = string,
+>(): MosaicWindowContextValue<T> {
+  return useContext(MosaicWindowContext) as MosaicWindowContextValue<T>;
 }
