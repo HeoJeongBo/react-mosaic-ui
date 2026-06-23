@@ -253,3 +253,15 @@ export const arePathsEqual = (pathA: MosaicPath, pathB: MosaicPath): boolean => 
   }
   return true;
 };
+
+/**
+ * True when `prefix` is a (non-strict) prefix of `full` — i.e. every branch of
+ * `prefix` matches `full` at the same index. An empty prefix matches anything.
+ */
+export const isPathPrefix = (prefix: MosaicPath, full: MosaicPath): boolean => {
+  if (prefix.length > full.length) return false;
+  for (let i = 0; i < prefix.length; i++) {
+    if (prefix[i] !== full[i]) return false;
+  }
+  return true;
+};

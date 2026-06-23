@@ -1,6 +1,7 @@
 import { produce } from 'immer';
 import type {
   MosaicBranch,
+  MosaicDirection,
   MosaicKey,
   MosaicNode,
   MosaicPath,
@@ -14,6 +15,7 @@ import {
   getNodeAtPath,
   getOtherBranch,
   isParent,
+  isPathPrefix,
 } from './mosaic-utilities';
 
 /**
@@ -182,6 +184,65 @@ export const canDropOnTarget = <T extends MosaicKey>(
   return getNodeAtPath(root, sourcePath) !== null && getNodeAtPath(root, destinationPath) !== null;
 };
 
+// Maps a drop position to the new split's orientation and whether the dragged
+// source becomes the first (left/top) child.
+const computeSplitOrientation = (
+  position: MosaicDropTargetPosition,
+): { direction: MosaicDirection; sourceIsFirst: boolean } => ({
+  direction:
+    position === MosaicDropTargetPosition.LEFT || position === MosaicDropTargetPosition.RIGHT
+      ? 'row'
+      : 'column',
+  sourceIsFirst:
+    position === MosaicDropTargetPosition.LEFT || position === MosaicDropTargetPosition.TOP,
+});
+
+// Builds a 50/50 split parent with the source on the chosen side.
+const buildSplitNode = <T extends MosaicKey>(
+  source: MosaicNode<T>,
+  other: MosaicNode<T>,
+  direction: MosaicDirection,
+  sourceIsFirst: boolean,
+): MosaicNode<T> => ({
+  direction,
+  first: sourceIsFirst ? source : other,
+  second: sourceIsFirst ? other : source,
+  splitPercentage: 50,
+});
+
+// After the source is removed its parent collapses into the surviving sibling,
+// which can shift the destination path up. Returns the destination path as it will
+// be once the removal has been applied.
+const adjustDestinationAfterRemoval = (
+  sourcePath: MosaicPath,
+  destinationPath: MosaicPath,
+): MosaicPath => {
+  const sourceParentPath = sourcePath.slice(0, -1);
+  const destParentPath = destinationPath.slice(0, -1);
+
+  // Siblings: after removing source, the parent collapses to destination, so the
+  // destination's new path is the (former) parent path.
+  if (arePathsEqual(sourceParentPath, destParentPath)) {
+    return sourceParentPath;
+  }
+
+  // Source's parent is an ancestor of destination (including the root collapse case
+  // when sourceParentPath is []). After removal that parent collapses to source's
+  // sibling, so the branch segment that pointed into the sibling disappears.
+  if (
+    isPathPrefix(sourceParentPath, destinationPath) &&
+    sourceParentPath.length < destinationPath.length
+  ) {
+    const sourceBranch = sourcePath[sourceParentPath.length];
+    const destBranchAtSameLevel = destinationPath[sourceParentPath.length];
+    if (sourceBranch !== destBranchAtSameLevel) {
+      return [...sourceParentPath, ...destinationPath.slice(sourceParentPath.length + 1)];
+    }
+  }
+
+  return destinationPath;
+};
+
 /**
  * Create updates for drag and drop operation
  */
@@ -191,143 +252,43 @@ export const createDragToUpdates = <T extends MosaicKey>(
   destinationPath: MosaicPath,
   position: MosaicDropTargetPosition,
 ): MosaicUpdate<T>[] => {
+  // 1. validate: both nodes exist and the drop isn't onto itself.
   const sourceNode = getNodeAtPath(root, sourcePath);
-  if (sourceNode === null) {
-    return [];
-  }
-
+  if (sourceNode === null) return [];
   const destinationNode = getNodeAtPath(root, destinationPath);
-  if (destinationNode === null) {
-    return [];
-  }
+  if (destinationNode === null) return [];
+  if (arePathsEqual(sourcePath, destinationPath)) return [];
 
-  // Don't allow dropping on itself
-  if (arePathsEqual(sourcePath, destinationPath)) {
-    return [];
-  }
+  // 2. orient: split direction + which side the source lands on.
+  const { direction, sourceIsFirst } = computeSplitOrientation(position);
 
-  // Determine split direction based on drop position
-  const direction =
-    position === MosaicDropTargetPosition.LEFT || position === MosaicDropTargetPosition.RIGHT
-      ? 'row'
-      : 'column';
-
-  // Determine which node goes first
-  const first =
-    position === MosaicDropTargetPosition.LEFT || position === MosaicDropTargetPosition.TOP
-      ? sourceNode
-      : destinationNode;
-
-  const second =
-    position === MosaicDropTargetPosition.LEFT || position === MosaicDropTargetPosition.TOP
-      ? destinationNode
-      : sourceNode;
-
-  const newSplitNode: MosaicNode<T> = {
-    direction,
-    first,
-    second,
-    splitPercentage: 50,
-  };
-
-  // Check if destination is a parent of source
-  const isDestinationParentOfSource =
-    sourcePath.length > destinationPath.length &&
-    destinationPath.every((branch, index) => sourcePath[index] === branch);
-
-  if (isDestinationParentOfSource) {
-    // Special case: destination contains source
-    // We need to remove source from within destination first, then split
+  // 3a. destination contains source: remove source from within destination, then
+  // replace destination with the split (no separate remove update needed).
+  if (isPathPrefix(destinationPath, sourcePath) && destinationPath.length < sourcePath.length) {
     const relativeSourcePath = sourcePath.slice(destinationPath.length);
     const updatedDestination = updateTree(destinationNode, [
       createRemoveUpdate(destinationNode, relativeSourcePath),
     ]);
-
-    /* v8 ignore next 3 -- removing a child from a two-leaf parent always yields the sibling, never null */
-    if (updatedDestination === null) {
-      return [];
-    }
-
-    // Create new split node with updated destination
-    const adjustedSplitNode: MosaicNode<T> = {
-      direction,
-      first:
-        position === MosaicDropTargetPosition.LEFT || position === MosaicDropTargetPosition.TOP
-          ? sourceNode
-          : updatedDestination,
-      second:
-        position === MosaicDropTargetPosition.LEFT || position === MosaicDropTargetPosition.TOP
-          ? updatedDestination
-          : sourceNode,
-      splitPercentage: 50,
-    };
+    /* v8 ignore next 1 -- removing a child from a two-leaf parent always yields the sibling, never null */
+    if (updatedDestination === null) return [];
 
     return [
       {
         path: destinationPath,
-        spec: { $set: adjustedSplitNode },
+        spec: { $set: buildSplitNode(sourceNode, updatedDestination, direction, sourceIsFirst) },
       },
     ];
   }
 
-  // Standard case: remove source, then add split at destination
+  // 3b. standard case: remove source, then add the split at the (possibly shifted)
+  // destination path.
   const updates: MosaicUpdate<T>[] = [];
-
-  // Remove source
   if (sourcePath.length > 0) {
     updates.push(createRemoveUpdate(root, sourcePath));
   }
-
-  // Determine if we need to adjust the destination path after removal
-  let adjustedDestinationPath = destinationPath;
-
-  // Check if source and destination are siblings (share the same parent)
-  const sourceParentPath = sourcePath.slice(0, -1);
-  const destParentPath = destinationPath.slice(0, -1);
-
-  const areSiblings =
-    sourceParentPath.length === destParentPath.length &&
-    sourceParentPath.every((branch, index) => destParentPath[index] === branch);
-
-  if (areSiblings) {
-    // After removing source, destination becomes its parent's only child
-    // So the parent is replaced with destination
-    // New destination path is the parent path
-    adjustedDestinationPath = sourceParentPath;
-  } else {
-    // Check if source's parent is an ancestor of the destination path.
-    // When sourceParentPath is [] (source is a root-level child), the condition
-    // sourceParentPath.every(...) trivially returns true, so we need the length
-    // check only to confirm the dest is actually deeper. We intentionally allow
-    // sourceParentPath.length === 0 here — root collapses to its sibling after removal.
-    const isSourceParentInDestPath =
-      sourceParentPath.length < destinationPath.length &&
-      sourceParentPath.every((branch, index) => destinationPath[index] === branch);
-
-    if (isSourceParentInDestPath) {
-      // Source parent is an ancestor of (or is the root of) destination.
-      // After removing source, the parent node collapses: source's sibling takes
-      // the parent's place. The destination path loses the segment that pointed
-      // into source's sibling branch.
-      const sourceBranch = sourcePath[sourceParentPath.length];
-      const destBranchAtSameLevel = destinationPath[sourceParentPath.length];
-
-      // Destination is in source's sibling subtree. After removal, that branch
-      // segment disappears because source's parent collapses to the sibling.
-      if (sourceBranch !== destBranchAtSameLevel) {
-        // After removal, destination moves up in the path
-        adjustedDestinationPath = [
-          ...sourceParentPath,
-          ...destinationPath.slice(sourceParentPath.length + 1),
-        ];
-      }
-    }
-  }
-
-  // Add the new split at destination
   updates.push({
-    path: adjustedDestinationPath,
-    spec: { $set: newSplitNode },
+    path: adjustDestinationAfterRemoval(sourcePath, destinationPath),
+    spec: { $set: buildSplitNode(sourceNode, destinationNode, direction, sourceIsFirst) },
   });
 
   return updates;

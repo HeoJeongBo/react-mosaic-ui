@@ -13,6 +13,7 @@ export {
   countNodes,
   getTreeDepth,
   arePathsEqual,
+  isPathPrefix,
 } from './mosaic-utilities';
 
 export {
