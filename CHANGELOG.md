@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.0.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v4.2.0...v5.0.0) (2026-06-23)
+
+### ⚠ BREAKING CHANGES
+
+* **shared:** createBoundingBox, getWidth, getHeight, split and containsPoint are
+no longer exported from the package root. Construct a BoundingBox as a plain object
+({ top, right, bottom, left }) if you need one.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+* **shared:** createSplitUpdate signature changed from (path, newNode, direction?)
+to (root, path, newNode, direction?). Pass the current tree as the first argument.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+### Features
+
+* **shared:** createSplitUpdate preserves the existing tile ([e93f2b0](https://github.com/HeoJeongBo/react-mosaic-ui/commit/e93f2b0d633ad1e8910445bcd19c8a274e9db932))
+
+### Documentation
+
+* refresh README for v5 and accumulated v4.1/4.2 features ([0c0fe33](https://github.com/HeoJeongBo/react-mosaic-ui/commit/0c0fe336c6904d59325f2e51e64a295b0a5153c3))
+
+### Code Refactoring
+
+* **shared:** drop low-level geometry helpers from public API ([cd6266b](https://github.com/HeoJeongBo/react-mosaic-ui/commit/cd6266b85f724791cd22843033f5b52f700fd32a))
+
 ## [4.2.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v4.1.0...v4.2.0) (2026-06-23)
 
 ### Features
