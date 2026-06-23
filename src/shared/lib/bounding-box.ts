@@ -16,7 +16,7 @@ export const getWidth = (box: BoundingBox): number => box.right - box.left;
 
 export const getHeight = (box: BoundingBox): number => box.bottom - box.top;
 
-export const split = (
+export const splitBoundingBox = (
   box: BoundingBox,
   percentage: number,
   direction: 'row' | 'column',

@@ -1,5 +1,9 @@
 import { isParent } from '@/shared/lib';
-import { areBoundingBoxesEqual, createBoundingBox, split } from '@/shared/lib/bounding-box';
+import {
+  areBoundingBoxesEqual,
+  createBoundingBox,
+  splitBoundingBox,
+} from '@/shared/lib/bounding-box';
 import { MosaicContext } from '@/shared/lib/context';
 import { arePathsEqual } from '@/shared/lib/mosaic-utilities';
 import type { MosaicKey, MosaicNode, MosaicPath } from '@/shared/types';
@@ -170,7 +174,7 @@ const MosaicNodeRendererImpl = <T extends MosaicKey>({
   }
 
   const splitPercentage = node.splitPercentage ?? 50;
-  const [firstBox, secondBox] = split(boundingBox, splitPercentage, node.direction);
+  const [firstBox, secondBox] = splitBoundingBox(boundingBox, splitPercentage, node.direction);
 
   return (
     <>

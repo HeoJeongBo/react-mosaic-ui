@@ -5,7 +5,7 @@ import {
   createBoundingBox,
   getHeight,
   getWidth,
-  split,
+  splitBoundingBox,
 } from './bounding-box';
 
 describe('bounding-box', () => {
@@ -84,41 +84,41 @@ describe('bounding-box', () => {
     });
   });
 
-  describe('split', () => {
+  describe('splitBoundingBox', () => {
     const box = createBoundingBox(0, 100, 100, 0);
 
     it('should split horizontally (row) at 50%', () => {
-      const [left, right] = split(box, 50, 'row');
+      const [left, right] = splitBoundingBox(box, 50, 'row');
       expect(left).toEqual({ top: 0, right: 50, bottom: 100, left: 0 });
       expect(right).toEqual({ top: 0, right: 100, bottom: 100, left: 50 });
     });
 
     it('should split vertically (column) at 50%', () => {
-      const [top, bottom] = split(box, 50, 'column');
+      const [top, bottom] = splitBoundingBox(box, 50, 'column');
       expect(top).toEqual({ top: 0, right: 100, bottom: 50, left: 0 });
       expect(bottom).toEqual({ top: 50, right: 100, bottom: 100, left: 0 });
     });
 
     it('should split at asymmetric percentage', () => {
-      const [left, right] = split(box, 70, 'row');
+      const [left, right] = splitBoundingBox(box, 70, 'row');
       expect(left.right).toBe(70);
       expect(right.left).toBe(70);
     });
 
     it('should clamp percentage below 0 to 0', () => {
-      const [first, second] = split(box, -10, 'row');
+      const [first, second] = splitBoundingBox(box, -10, 'row');
       expect(first.right).toBe(0);
       expect(second.left).toBe(0);
     });
 
     it('should clamp percentage above 100 to 100', () => {
-      const [first, second] = split(box, 110, 'row');
+      const [first, second] = splitBoundingBox(box, 110, 'row');
       expect(first.right).toBe(100);
       expect(second.left).toBe(100);
     });
 
     it('should preserve non-split dimensions', () => {
-      const [left, right] = split(box, 30, 'row');
+      const [left, right] = splitBoundingBox(box, 30, 'row');
       expect(left.top).toBe(box.top);
       expect(left.bottom).toBe(box.bottom);
       expect(right.top).toBe(box.top);

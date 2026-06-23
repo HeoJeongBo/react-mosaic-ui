@@ -84,11 +84,6 @@ export {
   createDragToUpdates,
   createReplaceUpdate,
   createSplitUpdate,
-  createBoundingBox,
-  getWidth,
-  getHeight,
-  split,
-  containsPoint,
 } from './shared/lib';
 
 // Context

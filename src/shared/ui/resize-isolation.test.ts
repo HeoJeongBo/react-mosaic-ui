@@ -1,4 +1,4 @@
-import { createBoundingBox, split } from '@/shared/lib/bounding-box';
+import { createBoundingBox, splitBoundingBox } from '@/shared/lib/bounding-box';
 import { describe, expect, it } from 'vitest';
 
 describe('Resize Isolation', () => {
@@ -16,7 +16,7 @@ describe('Resize Isolation', () => {
     const rootBox = createBoundingBox(0, 100, 100, 0);
 
     // Split into top and bottom rows
-    const [topRowBox, bottomRowBox] = split(rootBox, 50, 'column');
+    const [topRowBox, bottomRowBox] = splitBoundingBox(rootBox, 50, 'column');
 
     // Top row should only occupy top 50%
     expect(topRowBox.top).toBe(0);
@@ -31,7 +31,7 @@ describe('Resize Isolation', () => {
     expect(bottomRowBox.right).toBe(100);
 
     // Now split top row horizontally
-    const [topA, topB] = split(topRowBox, 50, 'row');
+    const [topA, topB] = splitBoundingBox(topRowBox, 50, 'row');
 
     // Top A should be in top-left quadrant
     expect(topA.top).toBe(0);
@@ -46,7 +46,7 @@ describe('Resize Isolation', () => {
     expect(topB.right).toBe(100);
 
     // Bottom row should remain unchanged
-    const [bottomC, bottomD] = split(bottomRowBox, 50, 'row');
+    const [bottomC, bottomD] = splitBoundingBox(bottomRowBox, 50, 'row');
 
     expect(bottomC.top).toBe(50);
     expect(bottomC.bottom).toBe(100);
@@ -62,17 +62,17 @@ describe('Resize Isolation', () => {
   it('should not affect sibling rows when resizing', () => {
     // When we resize the top row's horizontal split from 50% to 70%
     const rootBox = createBoundingBox(0, 100, 100, 0);
-    const [topRowBox, bottomRowBox] = split(rootBox, 50, 'column');
+    const [topRowBox, bottomRowBox] = splitBoundingBox(rootBox, 50, 'column');
 
     // Resize top row: A takes 70%, B takes 30%
-    const [topA_resized, topB_resized] = split(topRowBox, 70, 'row');
+    const [topA_resized, topB_resized] = splitBoundingBox(topRowBox, 70, 'row');
 
     // Top row should be affected
     expect(topA_resized.right).toBe(70);
     expect(topB_resized.left).toBe(70);
 
     // Bottom row should remain at 50/50
-    const [bottomC, bottomD] = split(bottomRowBox, 50, 'row');
+    const [bottomC, bottomD] = splitBoundingBox(bottomRowBox, 50, 'row');
     expect(bottomC.right).toBe(50);
     expect(bottomD.left).toBe(50);
 

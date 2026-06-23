@@ -32,7 +32,7 @@ export {
   createBoundingBox,
   getWidth,
   getHeight,
-  split,
+  splitBoundingBox,
   containsPoint,
   areBoundingBoxesEqual,
 } from './bounding-box';
