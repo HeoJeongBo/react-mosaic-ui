@@ -260,6 +260,11 @@ export function MosaicLayout<TId extends MosaicKey = string>({
   const anchorEls = useRef<Map<TId, HTMLDivElement>>(new Map());
   for (const p of panels) {
     if (!anchorEls.current.has(p.id)) {
+      // Anchor creation touches the DOM, so it must not run during SSR. The `!anchor`
+      // fallbacks in renderTile and StablePanelList cover the first server render;
+      // anchors are then created on the client and the tree re-homes them.
+      /* v8 ignore next 1 -- SSR guard: document is always defined in the browser and jsdom */
+      if (typeof document === 'undefined') continue;
       const el = document.createElement('div');
       el.style.width = '100%';
       el.style.height = '100%';
