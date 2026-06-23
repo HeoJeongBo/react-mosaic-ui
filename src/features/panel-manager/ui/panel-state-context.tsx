@@ -17,6 +17,12 @@ export interface PanelStateActions {
     migrate?: (persisted: unknown, fromVersion: number) => unknown,
   ) => void;
   getAllState: () => Record<string, { state: unknown; version: number }>;
+  /**
+   * Replace the whole persisted snapshot (used by cross-tab sync). Updates the seed
+   * for not-yet-registered panels and re-applies state to already-registered ones
+   * (respecting each entry's version/migrate), then notifies all subscribers.
+   */
+  replaceAllState: (states: Record<string, { state: unknown; version: number }>) => void;
 }
 
 export interface PanelStateContextValue {
@@ -32,6 +38,22 @@ export function createPanelStateContextValue(
   subscribersRef: React.MutableRefObject<Map<string, Set<() => void>>>,
   initialPersistedStates: Record<string, { state: unknown; version: number }>,
 ): PanelStateContextValue {
+  // Mutable seed for panels that have not registered yet. Cross-tab sync updates it
+  // via replaceAllState so a later-mounting panel still picks up the synced value.
+  let seedStates = initialPersistedStates;
+
+  // Resolve a persisted snapshot against an entry's version/migrate.
+  const resolvePersisted = (
+    persisted: { state: unknown; version: number },
+    version: number,
+    migrate: ((persisted: unknown, fromVersion: number) => unknown) | undefined,
+    fallback: unknown,
+  ): unknown => {
+    if (persisted.version === version) return persisted.state;
+    if (migrate) return migrate(persisted.state, persisted.version);
+    return fallback;
+  };
+
   const actions: PanelStateActions = {
     getState: (panelId) => storeRef.current.get(panelId)?.state,
 
@@ -48,19 +70,10 @@ export function createPanelStateContextValue(
     registerDefaults: (panelId, defaults, version, persistedStates, migrate) => {
       if (storeRef.current.has(panelId)) return;
 
-      const persisted = persistedStates[panelId] ?? initialPersistedStates[panelId];
-      let resolvedState: unknown;
-      if (persisted) {
-        if (persisted.version === version) {
-          resolvedState = persisted.state;
-        } else if (migrate) {
-          resolvedState = migrate(persisted.state, persisted.version);
-        } else {
-          resolvedState = defaults;
-        }
-      } else {
-        resolvedState = defaults;
-      }
+      const persisted = persistedStates[panelId] ?? seedStates[panelId];
+      const resolvedState = persisted
+        ? resolvePersisted(persisted, version, migrate, defaults)
+        : defaults;
 
       const entry: PanelStateEntry = { state: resolvedState, version };
       if (migrate !== undefined) entry.migrate = migrate;
@@ -73,6 +86,20 @@ export function createPanelStateContextValue(
         result[id] = { state: entry.state, version: entry.version };
       }
       return result;
+    },
+
+    replaceAllState: (states) => {
+      // Seed update so panels that mount after the sync pick up the synced value.
+      seedStates = states;
+      const toNotify = new Set<() => void>();
+      for (const [id, snapshot] of Object.entries(states)) {
+        const entry = storeRef.current.get(id);
+        if (!entry) continue;
+        const next = resolvePersisted(snapshot, entry.version, entry.migrate, entry.state);
+        storeRef.current.set(id, { ...entry, state: next });
+        for (const notify of subscribersRef.current.get(id) ?? []) toNotify.add(notify);
+      }
+      for (const notify of toNotify) notify();
     },
   };
 

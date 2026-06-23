@@ -59,6 +59,12 @@ export interface UsePersistedLayoutOptions<TId extends MosaicKey = string> {
    * resets the pending debounce. Panel state edits are captured at save time.
    */
   autoSaveDelayMs?: number;
+  /**
+   * Opt-in: when `true`, subscribe to the `storage` event so a save in another tab
+   * sharing this `storageKey` re-hydrates this instance's tree, active panels, and
+   * panel states. Defaults to `false` (single-tab, last-write-wins).
+   */
+  syncAcrossTabs?: boolean;
 
   // ---------------------------------------------------------------------------
   // Lifecycle callbacks — all optional. Stored in refs so they never need to be
@@ -245,9 +251,10 @@ function readPersisted<TId extends MosaicKey>(
  * );
  * ```
  *
- * Persistence is **single-tab**: the layout is read once on mount and writes are
- * last-write-wins, so it does not synchronize across multiple tabs sharing the same
- * `storageKey`. Coordinate saves yourself if you need multi-tab behavior.
+ * Persistence is **single-tab by default**: the layout is read once on mount and
+ * writes are last-write-wins. Pass `syncAcrossTabs: true` to subscribe to the
+ * `storage` event so a save in another tab sharing the same `storageKey`
+ * re-hydrates the tree, active panels, and panel states here.
  */
 export function usePersistedLayout<TId extends MosaicKey = string>(
   options: UsePersistedLayoutOptions<TId>,
@@ -263,6 +270,7 @@ export function usePersistedLayout<TId extends MosaicKey = string>(
     onPanelClose,
     onNodeChange: onNodeChangeProp,
     autoSaveDelayMs,
+    syncAcrossTabs,
   } = options;
 
   // Store callbacks in refs so they never need to be listed as deps.
@@ -355,6 +363,29 @@ export function usePersistedLayout<TId extends MosaicKey = string>(
     const timer = setTimeout(() => saveLayoutRef.current(), autoSaveDelayMs);
     return () => clearTimeout(timer);
   }, [autoSaveDelayMs, isDirty]);
+
+  // Opt-in cross-tab sync: a save in another tab fires a `storage` event here; we
+  // re-read the persisted snapshot and re-hydrate tree / active panels / panel states.
+  const rehydrate = useCallback(() => {
+    const result = readPersisted(storageKey, registry, defaultPanelIds);
+    liveTreeRef.current = result.tree;
+    setActiveIds(new Set(getLeaves(result.tree)));
+    setInitialNode(result.tree);
+    panelStateContextValue.actions.replaceAllState(result.panelStates);
+    setIsDirty(false);
+  }, [storageKey, registry, defaultPanelIds, panelStateContextValue]);
+  const rehydrateRef = useRef(rehydrate);
+  rehydrateRef.current = rehydrate;
+  useEffect(() => {
+    if (!syncAcrossTabs) return;
+    const handler = (e: StorageEvent) => {
+      // Only our key, or a whole-store clear (key === null).
+      if (e.key !== null && e.key !== storageKey) return;
+      rehydrateRef.current();
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, [syncAcrossTabs, storageKey]);
 
   const addPanel = useCallback(
     (id: TId) => {

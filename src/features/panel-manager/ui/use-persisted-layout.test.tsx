@@ -744,4 +744,67 @@ describe('usePersistedLayout', () => {
       expect(setItem).not.toHaveBeenCalled();
     });
   });
+
+  describe('syncAcrossTabs', () => {
+    function fireStorage(key: string | null, newValue: string | null) {
+      act(() => {
+        window.dispatchEvent(new StorageEvent('storage', { key, newValue }));
+      });
+    }
+
+    it('re-hydrates the tree and active panels on a storage event for the same key', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, syncAcrossTabs: true }),
+      );
+      // Another tab saves a smaller layout.
+      const next = JSON.stringify({ version: 2, tree: 'alpha', panelStates: {} });
+      localStorage.setItem(KEY, next);
+      fireStorage(KEY, next);
+      expect(new Set(getLeaves(result.current.initialNode))).toEqual(new Set(['alpha']));
+      expect([...result.current.activeIds]).toEqual(['alpha']);
+      expect(result.current.isDirty).toBe(false);
+    });
+
+    it('ignores storage events for a different key', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, syncAcrossTabs: true }),
+      );
+      localStorage.setItem('other-key', JSON.stringify({ version: 2, tree: 'alpha' }));
+      fireStorage('other-key', 'x');
+      expect(new Set(getLeaves(result.current.initialNode))).toEqual(
+        new Set(['alpha', 'beta', 'gamma']),
+      );
+    });
+
+    it('re-hydrates to the default layout when storage is cleared (key === null)', () => {
+      seed('alpha');
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, syncAcrossTabs: true }),
+      );
+      expect([...result.current.activeIds]).toEqual(['alpha']);
+      localStorage.clear();
+      fireStorage(null, null);
+      expect(new Set(result.current.activeIds)).toEqual(new Set(['alpha', 'beta', 'gamma']));
+    });
+
+    it('does not subscribe when syncAcrossTabs is not set', () => {
+      const { result } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY }),
+      );
+      localStorage.setItem(KEY, JSON.stringify({ version: 2, tree: 'alpha' }));
+      fireStorage(KEY, 'x');
+      expect(new Set(getLeaves(result.current.initialNode))).toEqual(
+        new Set(['alpha', 'beta', 'gamma']),
+      );
+    });
+
+    it('removes the storage listener on unmount', () => {
+      const remove = vi.spyOn(window, 'removeEventListener');
+      const { unmount } = renderHook(() =>
+        usePersistedLayout({ storageKey: KEY, registry: REGISTRY, syncAcrossTabs: true }),
+      );
+      unmount();
+      expect(remove).toHaveBeenCalledWith('storage', expect.any(Function));
+    });
+  });
 });

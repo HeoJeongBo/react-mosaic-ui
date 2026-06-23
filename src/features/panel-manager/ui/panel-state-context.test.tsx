@@ -118,6 +118,56 @@ describe('createPanelStateContextValue', () => {
       });
     });
   });
+
+  describe('replaceAllState', () => {
+    it('replaces a registered entry and notifies its subscribers when versions match', () => {
+      const { storeRef, subscribersRef } = makeRefs();
+      const { actions } = createPanelStateContextValue(storeRef, subscribersRef, {});
+      actions.registerDefaults('p', { count: 0 }, 1, {});
+      const sub = vi.fn();
+      subscribersRef.current.set('p', new Set([sub]));
+      actions.replaceAllState({ p: { state: { count: 5 }, version: 1 } });
+      expect(actions.getState('p')).toEqual({ count: 5 });
+      expect(sub).toHaveBeenCalledTimes(1);
+    });
+
+    it('migrates a registered entry when the synced version differs', () => {
+      const { storeRef, subscribersRef } = makeRefs();
+      const migrate = vi.fn(() => ({ count: 100 }));
+      const { actions } = createPanelStateContextValue(storeRef, subscribersRef, {});
+      actions.registerDefaults('p', { count: 0 }, 2, {}, migrate);
+      actions.replaceAllState({ p: { state: { old: 1 }, version: 1 } });
+      expect(migrate).toHaveBeenCalledWith({ old: 1 }, 1);
+      expect(actions.getState('p')).toEqual({ count: 100 });
+    });
+
+    it('keeps the current state when the version differs and no migrate is set', () => {
+      const { storeRef, subscribersRef } = makeRefs();
+      const { actions } = createPanelStateContextValue(storeRef, subscribersRef, {});
+      actions.registerDefaults('p', { count: 0 }, 2, {});
+      actions.replaceAllState({ p: { state: { old: 1 }, version: 1 } });
+      expect(actions.getState('p')).toEqual({ count: 0 });
+    });
+
+    it('updates the seed for not-yet-registered panels without touching the store', () => {
+      const { storeRef, subscribersRef } = makeRefs();
+      const { actions } = createPanelStateContextValue(storeRef, subscribersRef, {});
+      actions.replaceAllState({ later: { state: { x: 1 }, version: 1 } });
+      expect(storeRef.current.has('later')).toBe(false);
+      actions.registerDefaults('later', { x: 0 }, 1, {});
+      expect(actions.getState('later')).toEqual({ x: 1 });
+    });
+
+    it('does not throw when an affected id has no subscribers', () => {
+      const { storeRef, subscribersRef } = makeRefs();
+      const { actions } = createPanelStateContextValue(storeRef, subscribersRef, {});
+      actions.registerDefaults('p', { count: 0 }, 1, {});
+      expect(() =>
+        actions.replaceAllState({ p: { state: { count: 1 }, version: 1 } }),
+      ).not.toThrow();
+      expect(actions.getState('p')).toEqual({ count: 1 });
+    });
+  });
 });
 
 describe('usePanelStateRefs', () => {
