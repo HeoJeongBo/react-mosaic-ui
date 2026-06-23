@@ -163,6 +163,13 @@
   background-color: var(--rm-button-active, rgb(209 213 219));
 }
 
+/* Keyboard focus indicator (WCAG 2.4.7). :focus-visible keeps mouse clicks
+   outline-free while giving keyboard users a clear focus ring. */
+.rm-mosaic-button:focus-visible {
+  outline: 2px solid var(--rm-active-color);
+  outline-offset: 1px;
+}
+
 .rm-mosaic-button--close:hover {
   background-color: var(--rm-button-close-hover, #fecaca);
 }

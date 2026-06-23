@@ -364,6 +364,75 @@ describe('Split', () => {
     });
   });
 
+  describe('keyboard', () => {
+    it('ArrowRight increases the split for a row separator', () => {
+      const { container, onChange, onRelease } = renderSplit({ direction: 'row', percentage: 50 });
+      fireEvent.keyDown(container.firstChild as HTMLElement, { key: 'ArrowRight' });
+      expect(onChange).toHaveBeenCalledWith(51);
+      expect(onRelease).toHaveBeenCalledWith(51);
+    });
+
+    it('ArrowLeft decreases the split for a row separator', () => {
+      const { container, onChange } = renderSplit({ direction: 'row', percentage: 50 });
+      fireEvent.keyDown(container.firstChild as HTMLElement, { key: 'ArrowLeft' });
+      expect(onChange).toHaveBeenCalledWith(49);
+    });
+
+    it('ArrowDown increases and ArrowUp decreases for a column separator', () => {
+      const { container, onChange } = renderSplit({ direction: 'column', percentage: 50 });
+      const el = container.firstChild as HTMLElement;
+      fireEvent.keyDown(el, { key: 'ArrowDown' });
+      expect(onChange).toHaveBeenCalledWith(51);
+      fireEvent.keyDown(el, { key: 'ArrowUp' });
+      expect(onChange).toHaveBeenCalledWith(49);
+    });
+
+    it('uses a coarse 10% step when Shift is held', () => {
+      const { container, onChange } = renderSplit({ direction: 'row', percentage: 50 });
+      fireEvent.keyDown(container.firstChild as HTMLElement, { key: 'ArrowRight', shiftKey: true });
+      expect(onChange).toHaveBeenCalledWith(60);
+    });
+
+    it('Home jumps to the minimum and End to the maximum pane size', () => {
+      const { container, onChange } = renderSplit({
+        direction: 'row',
+        percentage: 50,
+        minimumPaneSizePercentage: 20,
+      });
+      const el = container.firstChild as HTMLElement;
+      fireEvent.keyDown(el, { key: 'Home' });
+      expect(onChange).toHaveBeenCalledWith(20);
+      fireEvent.keyDown(el, { key: 'End' });
+      expect(onChange).toHaveBeenCalledWith(80);
+    });
+
+    it('clamps to the minimum pane size', () => {
+      const { container, onChange } = renderSplit({
+        direction: 'row',
+        percentage: 20,
+        minimumPaneSizePercentage: 20,
+      });
+      fireEvent.keyDown(container.firstChild as HTMLElement, { key: 'ArrowLeft' });
+      expect(onChange).toHaveBeenCalledWith(20);
+    });
+
+    it('ignores keys it does not handle', () => {
+      const { container, onChange, onRelease } = renderSplit({ direction: 'row', percentage: 50 });
+      fireEvent.keyDown(container.firstChild as HTMLElement, { key: 'Tab' });
+      expect(onChange).not.toHaveBeenCalled();
+      expect(onRelease).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when onRelease is omitted', () => {
+      const onChange = vi.fn();
+      const { container } = render(
+        <Split direction="row" percentage={50} onChange={onChange} boundingBox={defaultBox} />,
+      );
+      fireEvent.keyDown(container.firstChild as HTMLElement, { key: 'ArrowRight' });
+      expect(onChange).toHaveBeenCalledWith(51);
+    });
+  });
+
   describe('RAF batching', () => {
     beforeEach(() => {
       vi.useFakeTimers();

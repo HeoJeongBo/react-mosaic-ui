@@ -196,6 +196,33 @@ export const Split = ({
     [direction, onRelease, minimumPaneSizePercentage, flushPendingChange, scheduleChange],
   );
 
+  // Keyboard operability for the role="separator" handle. Arrow keys nudge the
+  // split (Shift = coarse 10% step), Home/End jump to the min/max pane size. Each
+  // press is a discrete settle, so it mirrors a drag end: onChange then onRelease,
+  // reusing the same clamp as the pointer handlers.
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const min = minimumPaneSizePercentage;
+      const max = 100 - minimumPaneSizePercentage;
+      const step = e.shiftKey ? 10 : 1;
+      const decKey = direction === 'row' ? 'ArrowLeft' : 'ArrowUp';
+      const incKey = direction === 'row' ? 'ArrowRight' : 'ArrowDown';
+
+      let next: number;
+      if (e.key === decKey) next = percentageRef.current - step;
+      else if (e.key === incKey) next = percentageRef.current + step;
+      else if (e.key === 'Home') next = min;
+      else if (e.key === 'End') next = max;
+      else return;
+
+      e.preventDefault();
+      next = Math.max(min, Math.min(max, next));
+      onChange(next);
+      onRelease?.(next);
+    },
+    [direction, minimumPaneSizePercentage, onChange, onRelease],
+  );
+
   const isRow = direction === 'row';
   const effectivePercentage = livePercentage ?? percentage;
   const splitPosition = isRow
@@ -233,6 +260,7 @@ export const Split = ({
       tabIndex={0}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
+      onKeyDown={handleKeyDown}
     />
   );
 };
