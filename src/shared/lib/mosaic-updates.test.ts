@@ -747,7 +747,7 @@ describe('mosaic-updates', () => {
   });
 
   describe('createSplitUpdate', () => {
-    it('should split a node into two with default row direction', () => {
+    it('splits the existing node into [existing, newNode] with default row direction', () => {
       const root: MosaicNode<TestId> = {
         direction: 'column',
         first: 'a',
@@ -755,14 +755,14 @@ describe('mosaic-updates', () => {
         splitPercentage: 50,
       };
 
-      const update = createSplitUpdate<TestId>(['first'], 'c');
+      const update = createSplitUpdate<TestId>(root, ['first'], 'c');
       const result = updateTree(root, [update]);
 
       expect(result).toEqual({
         direction: 'column',
         first: {
           direction: 'row',
-          first: 'c',
+          first: 'a',
           second: 'c',
           splitPercentage: 50,
         },
@@ -771,7 +771,7 @@ describe('mosaic-updates', () => {
       });
     });
 
-    it('should split with column direction', () => {
+    it('splits with column direction, preserving the existing subtree', () => {
       const root: MosaicNode<TestId> = {
         direction: 'row',
         first: 'a',
@@ -779,7 +779,7 @@ describe('mosaic-updates', () => {
         splitPercentage: 50,
       };
 
-      const update = createSplitUpdate<TestId>(['second'], 'e', 'column');
+      const update = createSplitUpdate<TestId>(root, ['second'], 'e', 'column');
       const result = updateTree(root, [update]);
 
       expect(result).toEqual({
@@ -787,12 +787,22 @@ describe('mosaic-updates', () => {
         first: 'a',
         second: {
           direction: 'column',
-          first: 'e',
+          first: 'b',
           second: 'e',
           splitPercentage: 50,
         },
         splitPercentage: 50,
       });
+    });
+
+    it('throws when the path does not resolve to a node', () => {
+      const root: MosaicNode<TestId> = {
+        direction: 'row',
+        first: 'a',
+        second: 'b',
+        splitPercentage: 50,
+      };
+      expect(() => createSplitUpdate<TestId>(root, ['first', 'first'], 'c')).toThrow();
     });
   });
 

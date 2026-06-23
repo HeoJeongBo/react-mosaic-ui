@@ -308,26 +308,23 @@ export const createReplaceUpdate = <T extends MosaicKey>(
 };
 
 /**
- * Replace the node at `path` with a split whose BOTH children are `newNode`.
- *
- * ⚠️ This discards the existing node at `path` and places `newNode` on both sides,
- * so the resulting tree contains the same leaf id twice. That violates the leaf-id
- * uniqueness that {@link getLeaves}/{@link pruneTree} assume — use it only when you
- * genuinely want two copies of the same id. To split a tile into `[existing, new]`,
- * read the node at `path` and emit a `{ $set: { first: existing, second: newNode } }`
- * update instead (this is what `MosaicWindow`'s Split button does).
+ * Split the node at `path` into `[existing, newNode]` — the existing node is kept
+ * as `first` and `newNode` becomes `second`, so no leaf id is duplicated. Throws if
+ * `path` does not resolve to a node.
  */
 export const createSplitUpdate = <T extends MosaicKey>(
+  root: MosaicNode<T>,
   path: MosaicPath,
   newNode: T,
-  direction: 'row' | 'column' = 'row',
+  direction: MosaicDirection = 'row',
 ): MosaicUpdate<T> => {
+  const existing = getAndAssertNodeAtPathExists(root, path);
   return {
     path,
     spec: {
       $set: {
         direction,
-        first: newNode,
+        first: existing,
         second: newNode,
         splitPercentage: 50,
       },
