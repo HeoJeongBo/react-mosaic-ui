@@ -288,17 +288,3 @@
 .rm-dragging .rm-viewport-edge-drop-targets .rm-mosaic-drop-target {
   pointer-events: all;
 }
-
-/* ==========================================================================
-   DEPRECATED — backward-compat aliases for the pre-3.0 --color-mosaic-* names.
-   Setting an old variable still themes the library for one release cycle.
-   These will be removed in v4. Migrate to the --rm-* names above.
-   ========================================================================== */
-:root {
-  --rm-border-color: var(--color-mosaic-border, #cbd5e1);
-  --rm-background: var(--color-mosaic-background, #ffffff);
-  --rm-window-bg: var(--color-mosaic-window, #f8fafc);
-  --rm-toolbar-bg: var(--color-mosaic-toolbar, #f1f5f9);
-  --rm-split-color: var(--color-mosaic-split, #94a3b8);
-  --rm-split-hover: var(--color-mosaic-split-hover, #64748b);
-}
