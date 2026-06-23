@@ -7,6 +7,7 @@ import {
   getLeafPaths,
   getLeaves,
   getPathToLeaf,
+  isParent,
   updateTree,
 } from '@/shared/lib';
 import type {
@@ -17,7 +18,7 @@ import type {
   MosaicPath,
   MosaicUpdate,
 } from '@/shared/types';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 /** Picks the split direction for a newly added panel, given the resulting leaf count. */
@@ -45,7 +46,7 @@ export interface MosaicLayoutProps<TId extends MosaicKey = string>
 // a given id) so the portal target is fixed — the panel subtree is never unmounted when
 // the tree reshuffles. AnchorSlot (rendered by renderTile) places that anchor into the
 // current tile slot via a React-owned layout effect (StrictMode-safe — no manual gate).
-function StablePanelList<TId extends MosaicKey>({
+function StablePanelListImpl<TId extends MosaicKey>({
   panels,
   panelMap,
   anchorEls,
@@ -102,6 +103,20 @@ function StablePanelList<TId extends MosaicKey>({
       })}
     </>
   );
+}
+
+// Memoized so a MosaicLayout re-render that leaves panels / panelMap / anchorEls /
+// paths referentially equal — e.g. a resize tick, where the structure-gated `paths`
+// Map is reused — skips rebuilding every panel's JSX and createPortal.
+const StablePanelList = memo(StablePanelListImpl) as typeof StablePanelListImpl;
+
+// Structure-only signature of the tree (ignores splitPercentage): identical across
+// resize ticks, changes only on a reshape (drag / add / remove). Used to gate the
+// `paths` memo so percentage-only ticks reuse the prior Map.
+function treeStructureSignature<TId extends MosaicKey>(node: MosaicNode<TId> | null): string {
+  if (node === null) return '~';
+  if (!isParent(node)) return `l:${String(node)}`;
+  return `(${node.direction}:${treeStructureSignature(node.first)}|${treeStructureSignature(node.second)})`;
 }
 
 // Placed by renderTile into each tile slot. It mounts the stable `anchor` div as a
@@ -264,10 +279,19 @@ export function MosaicLayout<TId extends MosaicKey = string>({
   // Derive paths from currentNode in a single O(n) DFS — avoids setState during
   // render and the previous O(panels×n) per-panel getPathToLeaf scan. Missing
   // panels simply aren't keyed; StablePanelList falls back to [] via `?? []`.
-  const paths = useMemo<Map<TId, MosaicPath>>(
-    () => (currentNode ? getLeafPaths<TId>(currentNode) : new Map<TId, MosaicPath>()),
-    [currentNode],
-  );
+  //
+  // Gated on a structure-only signature so a resize tick (splitPercentage only,
+  // structure unchanged) reuses the prior Map — keeping StablePanelList's `paths`
+  // prop referentially stable so it bails out of re-portaling. currentNode is read
+  // via its ref; structureSig fully captures the path-relevant structure.
+  const structureSig = useMemo(() => treeStructureSignature(currentNode), [currentNode]);
+  const paths = useMemo<Map<TId, MosaicPath>>(() => {
+    // structureSig is the gating dep (mirrors the `void pathKey` pattern elsewhere);
+    // the actual node is read from the ref so it stays in sync without widening deps.
+    void structureSig;
+    const node = currentNodeRef.current;
+    return node ? getLeafPaths<TId>(node) : new Map<TId, MosaicPath>();
+  }, [structureSig]);
 
   // Drop anchors for panels that are no longer present: detach the div and remove
   // the map entry. This is the ONLY place anchors are torn down — it keys on a real
