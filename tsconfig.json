@@ -34,6 +34,8 @@
     "outDir": "./dist",
     "removeComments": true,
     "noEmit": false,
+    // Keep the composite/incremental cache out of dist so it is never published.
+    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo",
 
     // Interop
     "esModuleInterop": true,
