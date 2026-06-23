@@ -2,6 +2,12 @@ import type { MosaicKey } from '@/shared/types';
 import type { MosaicPanelConfig } from '@/shared/types';
 import { useCallback, useState } from 'react';
 
+function isPanelConfig<TId extends MosaicKey>(
+  x: MosaicPanelConfig<TId> | TId,
+): x is MosaicPanelConfig<TId> {
+  return typeof x === 'object' && x !== null;
+}
+
 export function useMosaicPanels<TId extends MosaicKey = string>() {
   const [panels, setPanels] = useState<MosaicPanelConfig<TId>[]>([]);
 
@@ -14,12 +20,11 @@ export function useMosaicPanels<TId extends MosaicKey = string>() {
   }, []);
 
   const togglePanel = useCallback((panelOrId: MosaicPanelConfig<TId> | TId) => {
-    const isConfig = typeof panelOrId === 'object' && panelOrId !== null;
-    const id = isConfig ? (panelOrId as MosaicPanelConfig<TId>).id : (panelOrId as TId);
+    const id = isPanelConfig(panelOrId) ? panelOrId.id : panelOrId;
     setPanels((prev) => {
       if (prev.some((p) => p.id === id)) return prev.filter((p) => p.id !== id);
-      if (!isConfig) return prev;
-      return [...prev, panelOrId as MosaicPanelConfig<TId>];
+      if (!isPanelConfig(panelOrId)) return prev;
+      return [...prev, panelOrId];
     });
   }, []);
 

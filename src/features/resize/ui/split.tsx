@@ -1,4 +1,4 @@
-import type { MosaicDirection } from '@/shared/types';
+import type { BoundingBox, MosaicDirection } from '@/shared/types';
 import classNames from 'classnames';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -7,12 +7,7 @@ export interface SplitProps {
   percentage: number;
   onChange: (percentage: number) => void;
   onRelease?: (percentage: number) => void;
-  boundingBox: {
-    top: number;
-    right: number;
-    bottom: number;
-    left: number;
-  };
+  boundingBox: BoundingBox;
   minimumPaneSizePercentage?: number;
 }
 
