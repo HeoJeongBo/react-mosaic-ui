@@ -154,6 +154,25 @@ export const getPathToLeaf = <T extends MosaicKey>(
 };
 
 /**
+ * Collect every leaf id in the tree mapped to its path, in a single depth-first
+ * pass. Equivalent to calling {@link getPathToLeaf} for each leaf, but O(n) total
+ * instead of O(n) per leaf.
+ */
+export const getLeafPaths = <T extends MosaicKey>(
+  node: MosaicNode<T>,
+  into: Map<T, MosaicPath> = new Map(),
+  path: MosaicPath = [],
+): Map<T, MosaicPath> => {
+  if (!isParent(node)) {
+    into.set(node, path);
+    return into;
+  }
+  getLeafPaths(node.first, into, [...path, 'first']);
+  getLeafPaths(node.second, into, [...path, 'second']);
+  return into;
+};
+
+/**
  * Get the path to a corner of the tree
  */
 export const getPathToCorner = <T extends MosaicKey>(

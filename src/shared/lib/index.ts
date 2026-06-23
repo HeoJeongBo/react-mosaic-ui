@@ -6,6 +6,7 @@ export {
   getAndAssertNodeAtPathExists,
   createBalancedTreeFromLeaves,
   getPathToLeaf,
+  getLeafPaths,
   getPathToCorner,
   getOtherDirection,
   getOtherBranch,

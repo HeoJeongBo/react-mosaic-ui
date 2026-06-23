@@ -4,6 +4,7 @@ import { MosaicWindow } from '@/entities/window';
 import {
   createBalancedTreeFromLeaves,
   createRemoveUpdate,
+  getLeafPaths,
   getLeaves,
   getPathToLeaf,
   updateTree,
@@ -260,16 +261,13 @@ export function MosaicLayout<TId extends MosaicKey = string>({
     }
   }
 
-  // Derive paths from currentNode — avoids setState during render.
-  const paths = useMemo(() => {
-    const map = new Map<TId, MosaicPath>();
-    if (!currentNode) return map;
-    for (const p of panels) {
-      const path = getPathToLeaf(currentNode, p.id) ?? [];
-      map.set(p.id, path);
-    }
-    return map;
-  }, [currentNode, panels]);
+  // Derive paths from currentNode in a single O(n) DFS — avoids setState during
+  // render and the previous O(panels×n) per-panel getPathToLeaf scan. Missing
+  // panels simply aren't keyed; StablePanelList falls back to [] via `?? []`.
+  const paths = useMemo<Map<TId, MosaicPath>>(
+    () => (currentNode ? getLeafPaths<TId>(currentNode) : new Map<TId, MosaicPath>()),
+    [currentNode],
+  );
 
   // Drop anchors for panels that are no longer present: detach the div and remove
   // the map entry. This is the ONLY place anchors are torn down — it keys on a real
