@@ -2,17 +2,17 @@
 
 ## File Naming
 
-All test files use `.tt.ts` or `.tt.tsx` extension.
+All test files use `.test.ts` or `.test.tsx` extension.
 
 ```
 my-component.tsx       # Component
-my-component.tt.tsx    # Component test
+my-component.test.tsx    # Component test
 
 format-date.ts         # Util function
-format-date.tt.ts      # Util test
+format-date.test.ts      # Util test
 
 user-api.ts            # API client
-user-api.tt.ts         # API test
+user-api.test.ts         # API test
 ```
 
 ## Testing Principles
@@ -20,7 +20,7 @@ user-api.tt.ts         # API test
 ### 1. AAA Pattern (Arrange-Act-Assert)
 
 ```typescript
-// format-date.tt.ts
+// format-date.test.ts
 import { describe, it, expect } from 'vitest';
 import { formatDate } from './format-date';
 
@@ -92,7 +92,7 @@ export const calculateTotalPrice = (
   return subtotal * (1 - discountRate);
 };
 
-// calculate-price.tt.ts
+// calculate-price.test.ts
 import { describe, it, expect } from 'vitest';
 import { calculateTotalPrice } from './calculate-price';
 
@@ -138,7 +138,7 @@ export const isUser = (data: unknown): data is User => {
   );
 };
 
-// type-guards.tt.ts
+// type-guards.test.ts
 import { describe, it, expect } from 'vitest';
 import { isUser } from './type-guards';
 
@@ -203,7 +203,7 @@ export const Button = ({
   );
 };
 
-// button.tt.tsx
+// button.test.tsx
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Button } from './button';
@@ -257,7 +257,7 @@ export const useCounter = (initialValue: number = 0) => {
   return { count, increment, decrement, reset };
 };
 
-// use-counter.tt.ts
+// use-counter.test.ts
 import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCounter } from './use-counter';
@@ -321,7 +321,7 @@ export const fetchUser = async (id: string): Promise<User> => {
   return response.json();
 };
 
-// user-api.tt.ts
+// user-api.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchUser } from './user-api';
 
@@ -380,7 +380,7 @@ export const UserProfile = ({ userId }: { userId: string }) => {
   );
 };
 
-// user-profile.tt.tsx
+// user-profile.test.tsx
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { UserProfile } from './user-profile';
@@ -454,18 +454,18 @@ src/
 │   └── auth/
 │       ├── ui/
 │       │   ├── login-form.tsx
-│       │   └── login-form.tt.tsx
+│       │   └── login-form.test.tsx
 │       ├── model/
 │       │   ├── auth-store.ts
-│       │   └── auth-store.tt.ts
+│       │   └── auth-store.test.ts
 │       └── api/
 │           ├── auth-api.ts
-│           └── auth-api.tt.ts
+│           └── auth-api.test.ts
 ```
 
 ## Checklist
 
-- [ ] Do all test files use `.tt.ts` or `.tt.tsx` extension?
+- [ ] Do all test files use `.test.ts` or `.test.tsx` extension?
 - [ ] Does it follow the AAA pattern?
 - [ ] Are test names clear?
 - [ ] Does each test verify only one concept?

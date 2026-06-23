@@ -229,8 +229,25 @@ function readPersisted<TId extends MosaicKey>(
  * Panels are described by a `registry` mapping each id to its component(s); only
  * panel ids and the tree (with split percentages) are stored, and the registry
  * rebuilds the panel configs on restore. Saving is manual via `saveLayout()` by
- * default; pass `autoSaveDelayMs` to debounce-save automatically. Wrap
- * `<MosaicLayout>` with the returned `PanelStateProvider` to enable `usePanelState`.
+ * default; pass `autoSaveDelayMs` to debounce-save automatically.
+ *
+ * Wrap `<MosaicLayout>` with the returned `PanelStateProvider` to enable
+ * `usePanelState`:
+ *
+ * ```tsx
+ * const { panels, initialNode, onNodeChange, PanelStateProvider } =
+ *   usePersistedLayout({ storageKey: 'layout', registry });
+ *
+ * return (
+ *   <PanelStateProvider>
+ *     <MosaicLayout panels={panels} initialNode={initialNode} onNodeChange={onNodeChange} />
+ *   </PanelStateProvider>
+ * );
+ * ```
+ *
+ * Persistence is **single-tab**: the layout is read once on mount and writes are
+ * last-write-wins, so it does not synchronize across multiple tabs sharing the same
+ * `storageKey`. Coordinate saves yourself if you need multi-tab behavior.
  */
 export function usePersistedLayout<TId extends MosaicKey = string>(
   options: UsePersistedLayoutOptions<TId>,

@@ -8,7 +8,7 @@ This is a TypeScript-based React project that adheres to **FSD (Feature-Sliced D
 
 ### 1. File Naming Convention
 - **Components**: `my-component.ts`, `my-component.tsx`
-- **Test files**: `my-component.tt.ts`
+- **Test files**: `my-component.test.ts`
 - **Type definitions**: `my-component.types.ts`
 - **Styles**: `my-component.styles.ts`
 - Use **kebab-case**
@@ -39,7 +39,7 @@ src/
 ### When Adding New Features
 1. ✅ Choose appropriate FSD layer (features vs entities vs widgets)
 2. ✅ Ensure file names use kebab-case
-3. ✅ Write test files (`*.tt.ts`)
+3. ✅ Write test files (`*.test.ts`)
 4. ✅ Separate type definition files (for complex cases)
 5. ✅ Check for circular dependencies (upper layers only import lower layers)
 

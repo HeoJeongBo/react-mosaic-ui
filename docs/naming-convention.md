@@ -18,9 +18,9 @@ button.tsx                # UI component
 
 #### Test Files
 ```
-user-profile.tt.ts        # Test file
-user-card.tt.tsx          # Component test
-api-client.tt.ts          # Util test
+user-profile.test.ts        # Test file
+user-card.test.tsx          # Component test
+api-client.test.ts          # Util test
 ```
 
 #### Type Definition Files
@@ -239,7 +239,7 @@ const arrItems = []; // ❌ use type system
 After writing code, verify the following:
 
 - [ ] Are file names in kebab-case?
-- [ ] Do test files use `.tt.ts` suffix?
+- [ ] Do test files use `.test.ts` suffix?
 - [ ] Do variable/function names clearly reveal intent?
 - [ ] Do Boolean variables use `is/has/should` prefix?
 - [ ] Are constants in `UPPER_SNAKE_CASE`?
