@@ -39,6 +39,34 @@ export type PersistedLayoutRegistry<TId extends MosaicKey = string> = Record<
   PersistedPanelEntry<any>
 >;
 
+// Re-types each entry as PersistedPanelEntry<P> with P inferred from its `component`.
+// Intersecting the registry with this (below) forces `componentProps` to match the
+// component's props while leaving the original literal type intact.
+type ValidatedRegistry<R> = {
+  [K in keyof R]: R[K] extends { component: ComponentType<infer P> }
+    ? PersistedPanelEntry<P>
+    : R[K];
+};
+
+/**
+ * Identity helper that preserves a registry's literal type while checking each
+ * entry's `componentProps` against its `component`'s props — the plain
+ * `PersistedLayoutRegistry<TId>` annotation erases that link to `any`. Pass the
+ * result straight to `usePersistedLayout({ registry })`.
+ *
+ * ```ts
+ * const registry = defineRegistry({
+ *   chart: { component: Chart, componentProps: { series } },
+ * });
+ * ```
+ */
+export function defineRegistry<
+  // biome-ignore lint/suspicious/noExplicitAny: per-entry props are inferred via ValidatedRegistry
+  const R extends Record<string, PersistedPanelEntry<any>>,
+>(registry: R & ValidatedRegistry<R>): R {
+  return registry;
+}
+
 export interface UsePersistedLayoutOptions<TId extends MosaicKey = string> {
   /** localStorage key under which the layout tree is persisted. */
   storageKey: string;

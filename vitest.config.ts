@@ -19,6 +19,7 @@ export default defineConfig({
         'src/test-utils/**',
         '**/*.test.ts',
         '**/*.test.tsx',
+        '**/*.type-check.ts',
         'dist/**',
         '*.config.js',
         '*.config.ts',

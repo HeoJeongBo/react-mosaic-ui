@@ -4,7 +4,7 @@ import { act, cleanup, render, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MosaicLayout } from './mosaic-layout';
 import type { PersistedLayoutRegistry } from './use-persisted-layout';
-import { usePersistedLayout } from './use-persisted-layout';
+import { defineRegistry, usePersistedLayout } from './use-persisted-layout';
 
 vi.mock('react-dnd', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-dnd')>();
@@ -806,5 +806,12 @@ describe('usePersistedLayout', () => {
       unmount();
       expect(remove).toHaveBeenCalledWith('storage', expect.any(Function));
     });
+  });
+});
+
+describe('defineRegistry', () => {
+  it('returns the registry unchanged (identity at runtime)', () => {
+    const registry = { alpha: { component: Comp } };
+    expect(defineRegistry(registry)).toBe(registry);
   });
 });

@@ -26,6 +26,7 @@ export {
   useMosaicPanels,
   usePersistedLayout,
   usePanelState,
+  defineRegistry,
 } from './features/panel-manager';
 export type {
   GetDirectionFn,
