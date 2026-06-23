@@ -1,6 +1,6 @@
 {
 	"name": "@heojeongbo/react-mosaic-ui",
-	"version": "4.1.0",
+	"version": "4.2.0",
 	"description": "A modern React tiling window manager with FSD architecture, Rollup bundling, and plain-CSS theming (CSS variables, no !important)",
 	"type": "module",
 	"main": "./dist/index.cjs",

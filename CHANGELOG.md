@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.2.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v4.1.0...v4.2.0) (2026-06-23)
+
+### Features
+
+* **panel-manager:** add defineRegistry for typed panel registries ([eed7fe4](https://github.com/HeoJeongBo/react-mosaic-ui/commit/eed7fe443d0fc19df3163cf661d863c292893be8))
+* **panel-manager:** opt-in cross-tab sync for usePersistedLayout ([456af0e](https://github.com/HeoJeongBo/react-mosaic-ui/commit/456af0e78b99c89b5c3138c0e8308fd4e6e53078))
+
 ## [4.1.0](https://github.com/HeoJeongBo/react-mosaic-ui/compare/v4.0.1...v4.1.0) (2026-06-23)
 
 ### Features
