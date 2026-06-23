@@ -245,6 +245,37 @@ describe('MosaicWindow', () => {
       consoleSpy.mockRestore();
     });
 
+    it('calls onError instead of console.error when Replace fails', async () => {
+      const errorCreateNode = vi.fn(() => {
+        throw new Error('create failed');
+      });
+      const onError = vi.fn();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      renderWindow({ path: ['first'], createNode: errorCreateNode, onError });
+      fireEvent.click(screen.getByTitle('Replace'));
+      await vi.waitFor(() => {
+        expect(onError).toHaveBeenCalledWith(expect.any(Error), 'replace');
+      });
+      expect(consoleSpy).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('calls onError instead of console.error when Split fails', async () => {
+      const errorCreateNode = vi.fn(() => {
+        throw new Error('create failed');
+      });
+      const onError = vi.fn();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockMosaicActions.getRoot.mockReturnValueOnce(null);
+      renderWindow({ path: ['first'], createNode: errorCreateNode, onError });
+      fireEvent.click(screen.getByTitle('Split'));
+      await vi.waitFor(() => {
+        expect(onError).toHaveBeenCalledWith(expect.any(Error), 'split');
+      });
+      expect(consoleSpy).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
     it('Split does nothing when getRoot returns null after createNode succeeds', async () => {
       const createNode = vi.fn(() => 'new-node');
       mockMosaicActions.getRoot.mockReturnValueOnce(null);

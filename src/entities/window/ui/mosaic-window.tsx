@@ -23,8 +23,9 @@ import { useDrag } from 'react-dnd';
 const DRAG_ITEM_TYPE = 'MosaicWindow';
 
 // Pre-built key sets for memo comparators — avoids allocating new Set on every comparison call.
-const MOSAIC_WINDOW_SKIP_KEYS = new Set<string>(['path', 'onDragStart', 'onDragEnd']);
-const MOSAIC_TOOLBAR_SKIP_KEYS = new Set<string>(['path']);
+// Callback props are read from refs, so a new function identity never needs a re-render.
+const MOSAIC_WINDOW_SKIP_KEYS = new Set<string>(['path', 'onDragStart', 'onDragEnd', 'onError']);
+const MOSAIC_TOOLBAR_SKIP_KEYS = new Set<string>(['path', 'onError']);
 
 /**
  * Props for {@link MosaicWindow} — the chrome (toolbar + body) wrapped around a tile.
@@ -48,6 +49,12 @@ export interface MosaicWindowProps<T extends MosaicKey> {
   onDragStart?: () => void;
   /** Called when a drag of this window ends (`'drop'` if it landed, `'reset'` otherwise). */
   onDragEnd?: (type: 'drop' | 'reset') => void;
+  /**
+   * Called when a Split or Replace toolbar action fails — i.e. the `createNode`
+   * factory rejects or throws. When omitted, the failure is logged with
+   * `console.error` as a development fallback.
+   */
+  onError?: (error: unknown, action: 'split' | 'replace') => void;
   /** Extra class applied to the window root element. */
   className?: string;
   /** Show the Close (✕) button. Defaults to `true`. */
@@ -73,6 +80,8 @@ export interface MosaicWindowToolbarProps<T extends MosaicKey> {
   /** Attach dragHandle.ref to the element that should initiate dragging. */
   dragHandle: DragBindings;
   closable?: boolean;
+  /** Forwarded from {@link MosaicWindowProps.onError}; reports Split/Replace failures. */
+  onError?: (error: unknown, action: 'split' | 'replace') => void;
 }
 
 const MosaicWindowImpl = <T extends MosaicKey>({
@@ -85,6 +94,7 @@ const MosaicWindowImpl = <T extends MosaicKey>({
   renderToolbar,
   onDragStart,
   onDragEnd,
+  onError,
   className,
   closable,
   hideToolbar,
@@ -208,6 +218,7 @@ const MosaicWindowImpl = <T extends MosaicKey>({
     ...(toolbarControls !== undefined && { toolbarControls }),
     ...(additionalControls !== undefined && { additionalControls }),
     ...(closable !== undefined && { closable }),
+    ...(onError !== undefined && { onError }),
   };
 
   const defaultToolbar = <MosaicWindowToolbar {...toolbarProps} />;
@@ -263,6 +274,7 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
   additionalControls,
   dragHandle,
   closable,
+  onError,
 }: MosaicWindowToolbarProps<T>) => {
   const { mosaicActions } = useContext(MosaicContext);
   const { mosaicWindowActions } = useContext(MosaicWindowContext);
@@ -272,6 +284,19 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
   // that read it don't need to list it as a dep (mosaicActions is already stable).
   const pathRef = useRef(path);
   pathRef.current = path;
+
+  // onError read from a ref so handleSplit/handleReplace stay stable and a new
+  // handler identity never re-renders the memoized toolbar (it is in the skip set).
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
+  const reportActionError = useCallback((error: unknown, action: 'split' | 'replace') => {
+    if (onErrorRef.current) {
+      onErrorRef.current(error, action);
+    } else {
+      console.error(`${action === 'split' ? 'Split' : 'Replace'} failed:`, error);
+    }
+  }, []);
 
   const handleExpand = useCallback(() => {
     mosaicActions.expand(pathRef.current);
@@ -285,17 +310,17 @@ const MosaicWindowToolbarImpl = <T extends MosaicKey>({
     try {
       await mosaicWindowActions.split();
     } catch (error) {
-      console.error('Split failed:', error);
+      reportActionError(error, 'split');
     }
-  }, [mosaicWindowActions]);
+  }, [mosaicWindowActions, reportActionError]);
 
   const handleReplace = useCallback(async () => {
     try {
       await mosaicWindowActions.replaceWithNew();
     } catch (error) {
-      console.error('Replace failed:', error);
+      reportActionError(error, 'replace');
     }
-  }, [mosaicWindowActions]);
+  }, [mosaicWindowActions, reportActionError]);
 
   const handleMaximize = useCallback(() => {
     if (mosaicActions.isMaximized()) {
