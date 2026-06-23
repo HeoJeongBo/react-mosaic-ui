@@ -219,10 +219,12 @@ The registry shape mirrors a real-world config map, so an existing one can be pa
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `component` | `ComponentType` | Rendered as the panel body |
+| `component` | `ComponentType<P>` | Rendered as the panel body |
+| `componentProps` | `P` | Optional props forwarded to `component` at render time |
 | `toolbar` | `ComponentType` | Optional custom toolbar component |
 | `wrapper` | `ComponentType<{ children: ReactNode }>` | Optional wrapper (e.g. a context provider) |
 | `closable` | `boolean` | Optional — show/hide the close button |
+| `title` | `string` | Optional window title (overridden by the `titles` option) |
 
 **Options**
 
@@ -233,6 +235,10 @@ The registry shape mirrors a real-world config map, so an existing one can be pa
 | `titles` | `Partial<Record<T, string>>` | Optional id → window title map; falls back to `String(id)` |
 | `defaultPanelIds` | `T[]` | Panels shown on a clean first run; defaults to all registry keys |
 | `autoSaveDelayMs` | `number` | Opt-in: debounce-persist this many ms after the tree changes (no manual `saveLayout()` needed) |
+| `syncAcrossTabs` | `boolean` | Opt-in: re-hydrate from the `storage` event when another tab saves the same `storageKey` (default single-tab) |
+| `onSave` / `onReset` | `(node) => void` | Called after `saveLayout()` / `resetLayout()` |
+| `onPanelOpen` / `onPanelClose` | `(id) => void` | Called when a panel is shown / hidden |
+| `onNodeChange` | `(node) => void` | Called on every tree change |
 
 **Return**
 
@@ -245,8 +251,11 @@ The registry shape mirrors a real-world config map, so an existing one can be pa
 | `addPanel(id)` | `void` | Show a panel; no-op if id is not in the registry |
 | `removePanel(id)` | `void` | Hide a panel |
 | `hasPanel(id)` | `boolean` | Whether a panel id is currently shown |
+| `activeIds` | `ReadonlySet<T>` | Currently visible panel ids |
+| `isDirty` | `boolean` | Whether the layout changed since the last `saveLayout()` |
 | `clearLayout()` | `void` | Hide all panels (does not touch storage) |
 | `resetLayout()` | `void` | Clear stored layout and restore the default panel set |
+| `PanelStateProvider` | `ComponentType` | Wrap `<MosaicLayout>` with it to enable `usePanelState()` (see below) |
 
 ```tsx
 import { MosaicLayout, usePersistedLayout } from '@heojeongbo/react-mosaic-ui';
@@ -278,6 +287,39 @@ function Dashboard() {
 
 > `MosaicLayout` reads `initialNode` only once (on mount). To apply a fresh tree after `resetLayout()`, remount the subtree by bumping a React `key`.
 
+#### `defineRegistry()` — type-safe registries
+
+`PersistedLayoutRegistry<T>` erases each entry's component prop types. Wrap your registry in `defineRegistry()` to keep them: `componentProps` is then checked against each entry's `component`, and the literal key/entry types are preserved.
+
+```tsx
+import { defineRegistry } from '@heojeongbo/react-mosaic-ui';
+
+const REGISTRY = defineRegistry({
+  chart: { component: Chart, componentProps: { series } }, // ✗ wrong-shaped componentProps now errors
+  table: { component: Table },
+});
+```
+
+#### `usePanelState()` — per-panel state that persists with the layout
+
+Inside a panel rendered by a `MosaicLayout` wrapped in the `PanelStateProvider`, `usePanelState()` works like `useState` but the value is saved and restored with the layout. Outside a provider it transparently falls back to local component state.
+
+```tsx
+const { PanelStateProvider, /* … */ } = usePersistedLayout({ storageKey, registry });
+
+return (
+  <PanelStateProvider>
+    <MosaicLayout panels={panels} initialNode={initialNode} onNodeChange={onNodeChange} />
+  </PanelStateProvider>
+);
+
+// inside a panel component:
+function TodoPanel() {
+  const [checked, setChecked] = usePanelState<Record<string, boolean>>({ defaultState: {}, version: 1 });
+  // … state is saved with saveLayout() and restored on reload
+}
+```
+
 ---
 
 ## API Reference
@@ -286,7 +328,7 @@ function Dashboard() {
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `renderTile` | `(id: T, path: MosaicPath) => JSX.Element` | required | Renders each leaf tile |
+| `renderTile` | `(id: T, path: MosaicPath) => ReactNode` | required | Renders each leaf tile |
 | `value` | `MosaicNode<T> \| null` | — | Controlled tree value |
 | `initialValue` | `MosaicNode<T> \| null` | — | Uncontrolled initial value |
 | `onChange` | `(node: MosaicNode<T> \| null) => void` | — | Called on every tree change |
@@ -294,7 +336,6 @@ function Dashboard() {
 | `className` | `string` | — | Extra class on the root element |
 | `zeroStateView` | `JSX.Element` | built-in | Shown when tree is `null` |
 | `mosaicId` | `string` | auto | ID for multi-mosaic DnD isolation |
-| `createNode` | `() => T \| Promise<T>` | — | Factory for new tiles (enables split/replace) |
 | `resize` | `ResizeOptions` | — | Override minimum pane size |
 | `ariaLabel` | `string` | `"Mosaic layout"` | Accessible label for the container (`role="group"`) |
 | `highlightActive` | `boolean` | `true` | Highlight the focused window with a ring |
@@ -303,20 +344,23 @@ function Dashboard() {
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `title` | `string` | required | Toolbar title |
+| `title` | `string` | required | Toolbar title (and default accessible label) |
 | `path` | `MosaicPath` | required | Position in the tree (passed from `renderTile`) |
 | `children` | `ReactNode` | required | Window body content |
 | `createNode` | `() => T \| Promise<T>` | — | Enables Split and Replace toolbar buttons |
-| `draggable` | `boolean` | `true` | Whether the window can be dragged |
-| `toolbarControls` | `ReactNode` | — | Replaces the default toolbar buttons entirely |
-| `additionalControls` | `ReactNode` | — | Extra controls shown in a collapsible drawer |
-| `renderToolbar` | `(props, defaultToolbar) => ReactNode` | — | Full toolbar override (receives default as second arg) |
+| `toolbarControls` | `ReactNode` | — | Extra controls rendered before the built-in toolbar buttons |
+| `additionalControls` | `ReactNode` | — | Extra controls shown in a collapsible drawer (⋯) |
+| `renderToolbar` | `(props, defaultToolbar) => ReactNode` | — | Full toolbar override (receives default as second arg); return `null` for no toolbar |
 | `onDragStart` | `() => void` | — | Called when drag begins |
 | `onDragEnd` | `(type: 'drop' \| 'reset') => void` | — | Called when drag ends |
-| `className` | `string` | — | Extra class on the window element |
+| `onError` | `(error, action: 'split' \| 'replace') => void` | — | Called when a Split/Replace `createNode` rejects or throws (otherwise logged via `console.error`) |
+| `closable` | `boolean` | `true` | Show the Close (✕) button |
 | `hideToolbar` | `boolean` | `false` | Render with no toolbar chrome at all |
+| `className` | `string` | — | Extra class on the window element |
 | `bodyPadding` | `string \| number` | — | Inline padding override for the body (wins over CSS) |
 | `bodyClassName` | `string` | — | Extra class on the window body |
+| `ariaLabel` | `string` | `title` | Accessible label for the window region |
+| `panelId` | `T` | — | Leaf id; supplied by `MosaicLayout` for panel-state persistence |
 
 **Built-in toolbar buttons** (visible when `createNode` is provided):
 
@@ -354,7 +398,7 @@ import {
   createExpandUpdate,           // Expand a tile to a percentage
   createHideUpdate,             // Hide a tile (DnD internal)
   createReplaceUpdate,          // Replace a tile with another node
-  createSplitUpdate,            // Split a tile into two
+  createSplitUpdate,            // Split a tile into [existing, new]: createSplitUpdate(root, path, newNode)
   createDragToUpdates,          // Move a tile via drag
 } from '@heojeongbo/react-mosaic-ui';
 ```
@@ -516,10 +560,15 @@ When you don't want the default toolbar or body padding at all, use props instea
 
 These are also available per-panel on `MosaicLayout` / `usePersistedLayout` panel configs (`hideToolbar`, `bodyPadding`, `bodyClassName`). The `renderToolbar={() => null}` escape hatch still works if you prefer it.
 
+### Migrating to 5.x
+
+- **`createSplitUpdate` now takes the root and preserves the existing tile.** The signature changed from `createSplitUpdate(path, newNode, direction?)` to `createSplitUpdate(root, path, newNode, direction?)`, and it splits the node at `path` into `[existing, newNode]` instead of placing `newNode` on both sides (which produced a duplicate leaf id). Pass the current tree as the first argument.
+- **Low-level bounding-box helpers are no longer exported from the package root:** `createBoundingBox`, `getWidth`, `getHeight`, `split`, `containsPoint`. They were layout internals. The `BoundingBox` **type** is still exported, so build one as a plain object (`{ top, right, bottom, left }`) if you ever pass one to `<Split>` directly.
+
 ### Migrating from 2.x
 
 - **No more `!important`.** All styling moved onto single semantic classes with normal specificity. If you previously used `!important` to fight the library's own `!important`, you can remove it — plain overrides now win.
-- **Theming variables renamed to `--rm-*`.** The old `--color-mosaic-*` names still work for one release cycle (they're aliased) but are deprecated; switch to `--rm-border-color`, `--rm-window-bg`, `--rm-toolbar-bg`, `--rm-split-color`, `--rm-split-hover`, `--rm-background`.
+- **Theming variables renamed to `--rm-*`.** The old `--color-mosaic-*` aliases were removed in 4.x; use the `--rm-*` names (`--rm-border-color`, `--rm-window-bg`, `--rm-toolbar-bg`, `--rm-split-color`, `--rm-split-hover`, `--rm-background`).
 - **Internal utility classes removed.** `rm-flex`, `rm-px-4`, `rm-bg-mosaic-toolbar`, etc. are no longer in `styles.css`. They were never public; if you referenced them, target the semantic classes instead.
 
 ## Active panel highlight
@@ -550,8 +599,8 @@ The library ships sensible ARIA defaults:
 
 - The mosaic container has `role="group"` and an `aria-label` (default `"Mosaic layout"`, override with the `ariaLabel` prop on `<Mosaic>`).
 - Each window has `role="region"` and an `aria-label` defaulting to its `title` (override per window with the `ariaLabel` prop on `<MosaicWindow>`).
-- Resize handles have `role="separator"`, `aria-orientation`, `aria-valuenow/min/max`, and are focusable (`tabIndex={0}`).
-- Toolbar buttons carry `aria-label`s matching their action (Split, Replace, Expand, Maximize, Close, More).
+- Resize handles have `role="separator"`, `aria-orientation`, `aria-valuenow/min/max`, are focusable (`tabIndex={0}`), and are **keyboard operable**: with the handle focused, Arrow keys nudge the split by 1% (10% with <kbd>Shift</kbd>), and <kbd>Home</kbd>/<kbd>End</kbd> jump to the minimum/maximum pane size.
+- Toolbar buttons carry `aria-label`s matching their action (Split, Replace, Expand, Maximize, Close, More) and show a visible focus ring via `:focus-visible` (keyboard only) — no `outline: none` dead end.
 - The active-panel highlight is purely visual — a focused window's `role="region"` is already announced, so no extra ARIA is added.
 
 ```tsx
