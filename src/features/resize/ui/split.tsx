@@ -16,6 +16,44 @@ export interface SplitProps {
   minimumPaneSizePercentage?: number;
 }
 
+// Maps a pointer delta to a clamped split percentage. Shared by the mouse and
+// touch handlers so the row/column formula and the clamp live in exactly one place.
+function computeNewPercentage(params: {
+  direction: MosaicDirection;
+  clientX: number;
+  clientY: number;
+  startX: number;
+  startY: number;
+  startPercentage: number;
+  parentRect: { width: number; height: number };
+  parentWidth: number;
+  parentHeight: number;
+  minimumPaneSizePercentage: number;
+}): number {
+  const {
+    direction,
+    clientX,
+    clientY,
+    startX,
+    startY,
+    startPercentage,
+    parentRect,
+    parentWidth,
+    parentHeight,
+    minimumPaneSizePercentage,
+  } = params;
+
+  let next: number;
+  if (direction === 'row') {
+    const actualWidth = (parentRect.width * parentWidth) / 100;
+    next = startPercentage + ((clientX - startX) / actualWidth) * 100;
+  } else {
+    const actualHeight = (parentRect.height * parentHeight) / 100;
+    next = startPercentage + ((clientY - startY) / actualHeight) * 100;
+  }
+  return Math.max(minimumPaneSizePercentage, Math.min(100 - minimumPaneSizePercentage, next));
+}
+
 export const Split = ({
   direction,
   percentage,
@@ -94,28 +132,19 @@ export const Split = ({
       let latestPercentage = startPercentage;
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
-        let newPercentage: number;
-
-        if (direction === 'row') {
-          const deltaX = moveEvent.clientX - startX;
-          const actualWidth = (parentRect.width * parentWidth) / 100;
-          const deltaPercentage = (deltaX / actualWidth) * 100;
-          newPercentage = startPercentage + deltaPercentage;
-        } else {
-          const deltaY = moveEvent.clientY - startY;
-          const actualHeight = (parentRect.height * parentHeight) / 100;
-          const deltaPercentage = (deltaY / actualHeight) * 100;
-          newPercentage = startPercentage + deltaPercentage;
-        }
-
-        // Clamp between minimum sizes
-        newPercentage = Math.max(
+        latestPercentage = computeNewPercentage({
+          direction,
+          clientX: moveEvent.clientX,
+          clientY: moveEvent.clientY,
+          startX,
+          startY,
+          startPercentage,
+          parentRect,
+          parentWidth,
+          parentHeight,
           minimumPaneSizePercentage,
-          Math.min(100 - minimumPaneSizePercentage, newPercentage),
-        );
-
-        latestPercentage = newPercentage;
-        scheduleChange(newPercentage);
+        });
+        scheduleChange(latestPercentage);
       };
 
       const handleMouseUp = () => {
@@ -158,27 +187,19 @@ export const Split = ({
         moveEvent.preventDefault();
 
         const moveTouch = moveEvent.touches[0]!;
-        let newPercentage: number;
-
-        if (direction === 'row') {
-          const deltaX = moveTouch.clientX - startX;
-          const actualWidth = (parentRect.width * parentWidth) / 100;
-          const deltaPercentage = (deltaX / actualWidth) * 100;
-          newPercentage = startPercentage + deltaPercentage;
-        } else {
-          const deltaY = moveTouch.clientY - startY;
-          const actualHeight = (parentRect.height * parentHeight) / 100;
-          const deltaPercentage = (deltaY / actualHeight) * 100;
-          newPercentage = startPercentage + deltaPercentage;
-        }
-
-        newPercentage = Math.max(
+        latestPercentage = computeNewPercentage({
+          direction,
+          clientX: moveTouch.clientX,
+          clientY: moveTouch.clientY,
+          startX,
+          startY,
+          startPercentage,
+          parentRect,
+          parentWidth,
+          parentHeight,
           minimumPaneSizePercentage,
-          Math.min(100 - minimumPaneSizePercentage, newPercentage),
-        );
-
-        latestPercentage = newPercentage;
-        scheduleChange(newPercentage);
+        });
+        scheduleChange(latestPercentage);
       };
 
       const handleTouchEnd = () => {
