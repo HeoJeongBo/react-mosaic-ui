@@ -4,8 +4,8 @@ import {
   type MosaicNode,
   type MosaicPath,
   MosaicWindow,
-  type PersistedLayoutRegistry,
   createBalancedTreeFromLeaves,
+  defineRegistry,
   getLeaves,
   useMosaicPanels,
   usePanelState,
@@ -132,7 +132,19 @@ function LowLevelDemo() {
     second: { direction: 'row', splitPercentage: 50, first: 'c', second: 'd' },
   });
 
-  const createNode = useCallback((): LowLevelViewId => 'new', []);
+  // onError demo: when the toggle is on, the tile factory rejects so a Split/Replace
+  // surfaces the failure through MosaicWindow's `onError` instead of failing silently.
+  const [failNext, setFailNext] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+
+  const createNode = useCallback(
+    (): LowLevelViewId | Promise<LowLevelViewId> =>
+      failNext ? Promise.reject(new Error('createNode failed')) : 'new',
+    [failNext],
+  );
+  const handleError = useCallback((error: unknown, action: 'split' | 'replace') => {
+    setLastError(`${action} failed: ${(error as Error).message}`);
+  }, []);
 
   const autoArrange = useCallback(() => {
     setCurrentNode((node) => {
@@ -154,6 +166,7 @@ function LowLevelDemo() {
         path={path}
         title={LOW_LEVEL_TITLE[id]}
         createNode={createNode}
+        onError={handleError}
         additionalControls={
           <div className="window-extra-controls">
             <button
@@ -172,7 +185,7 @@ function LowLevelDemo() {
         </div>
       </MosaicWindow>
     ),
-    [createNode],
+    [createNode, handleError],
   );
 
   return (
@@ -196,7 +209,36 @@ function LowLevelDemo() {
         >
           🗑️ Clear All
         </button>
+        <label
+          className="demo-stat"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+        >
+          <input
+            type="checkbox"
+            checked={failNext}
+            onChange={(e) => setFailNext(e.target.checked)}
+          />
+          Simulate createNode failure
+        </label>
       </div>
+
+      {lastError && (
+        <button
+          type="button"
+          onClick={() => setLastError(null)}
+          style={{
+            textAlign: 'left',
+            padding: '0.5rem 0.75rem',
+            borderRadius: '0.375rem',
+            border: '1px solid #b91c1c',
+            background: '#7f1d1d',
+            color: '#fee2e2',
+            cursor: 'pointer',
+          }}
+        >
+          ⚠ onError: {lastError} — toolbar Split/Replace surfaced this (click to dismiss)
+        </button>
+      )}
 
       <div className="demo-code-hint">
         <span className="demo-code-keyword">const</span> {'[currentNode, setCurrentNode] = '}
@@ -229,7 +271,7 @@ function LowLevelDemo() {
 // Persisted layout demo — usePersistedLayout (registry + localStorage)
 // ---------------------------------------------------------------------------
 
-type PersistedViewId = 'alpha' | 'beta' | 'gamma' | 'measured' | 'todo';
+type PersistedViewId = 'alpha' | 'beta' | 'gamma' | 'measured' | 'todo' | 'badge';
 
 function PersistedView({ label, color }: { label: string; color: string }) {
   return (
@@ -247,6 +289,10 @@ function BetaView() {
 }
 function GammaView() {
   return <PersistedView label="Gamma" color="#134e4a" />;
+}
+// Takes props — registered with `componentProps`, which defineRegistry type-checks.
+function BadgeView({ count }: { count: number }) {
+  return <PersistedView label={`Badge ×${count}`} color="#4c1d95" />;
 }
 
 // Mirrors a real consumer panel (e.g. oasys sensor views): it measures its own
@@ -339,13 +385,16 @@ function BorderProvider({ children }: { children: React.ReactNode }) {
 }
 
 // Titles are colocated with their registry entry — no separate titles map needed.
-const PERSISTED_REGISTRY: PersistedLayoutRegistry<PersistedViewId> = {
+// defineRegistry preserves the literal key/entry types and checks each entry's
+// `componentProps` against its `component` (try `{ count: 'oops' }` → type error).
+const PERSISTED_REGISTRY = defineRegistry({
   alpha: { component: AlphaView, title: 'Alpha' },
   beta: { component: BetaView, toolbar: BetaToolbar, title: 'Beta' },
   gamma: { component: GammaView, wrapper: BorderProvider, title: 'Gamma' },
   measured: { component: MeasuredView, title: 'Measured' },
   todo: { component: TodoView, title: 'Todo (panel state)' },
-};
+  badge: { component: BadgeView, componentProps: { count: 5 }, title: 'Badge (typed props)' },
+});
 
 const PERSISTED_STORAGE_KEY = 'react-mosaic-demo-layout';
 
@@ -366,6 +415,8 @@ function PersistedDemo() {
   } = usePersistedLayout<PersistedViewId>({
     storageKey: PERSISTED_STORAGE_KEY,
     registry: PERSISTED_REGISTRY,
+    // Re-hydrate when another tab saves the same storageKey (default is single-tab).
+    syncAcrossTabs: true,
     onSave: () => {
       setSavedFlash(true);
       window.setTimeout(() => setSavedFlash(false), 1500);
@@ -375,7 +426,7 @@ function PersistedDemo() {
     onReset: () => console.log('[demo] layout reset'),
   });
 
-  const ids: PersistedViewId[] = ['alpha', 'beta', 'gamma', 'measured', 'todo'];
+  const ids: PersistedViewId[] = ['alpha', 'beta', 'gamma', 'measured', 'todo', 'badge'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '0.75rem' }}>
@@ -408,6 +459,10 @@ function PersistedDemo() {
       <div className="demo-code-hint">
         <span className="demo-code-comment">
           {'// Check items in "Todo" panel, Save layout, then reload — checkbox state is restored.'}
+        </span>
+        <br />
+        <span className="demo-code-comment">
+          {'// syncAcrossTabs: open this page in a 2nd tab and Save — the other tab updates live.'}
         </span>
       </div>
 

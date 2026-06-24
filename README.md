@@ -773,9 +773,9 @@ Notes on what 100% means here:
 ### Release
 
 ```bash
-bun run release:patch   # 2.2.1 → 2.2.2
-bun run release:minor   # 2.2.1 → 2.3.0
-bun run release:major   # 2.2.1 → 3.0.0
+bun run release:patch   # 5.0.0 → 5.0.1
+bun run release:minor   # 5.0.0 → 5.1.0
+bun run release:major   # 5.0.0 → 6.0.0
 bun run release:dry     # dry run (no publish)
 ```
 

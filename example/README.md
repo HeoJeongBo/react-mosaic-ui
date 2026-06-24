@@ -1,45 +1,47 @@
 # React Mosaic UI - Example
 
-This is a live example of React Mosaic UI demonstrating all features.
+A live demo of React Mosaic UI across three tabs — a high-level, a low-level, and a
+persisted-layout approach.
 
 ## Quick Start
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Run development server
-npm run dev
+bun run dev
 ```
 
 Then open your browser to `http://localhost:5173`
 
-## Features Demonstrated
+## What's Demonstrated
 
-### 🪟 Window Management
-- **Add Window**: Create new windows dynamically
-- **Remove Window**: Close windows with the × button
-- **Auto Arrange**: Automatically balance the layout
+The app has three tabs:
 
-### 🎯 Window Controls
-- **⛶ Expand**: Maximize a window to take up more space (70% by default)
-- **⊞ Split**: Divide a window into two parts
-- **✕ Close**: Remove a window from the layout
+### ✨ High-level API — `useMosaicPanels` + `<MosaicLayout>`
+- Add / remove / clear panels by id; the tree is reconciled for you.
+- Panel content is portaled into stable anchors, so reshuffling never unmounts it.
 
-### 🎨 Drag & Drop
-- **Drag Title Bar**: Click and drag the window title to move it
-- **Drop Zones**: Drop on any of the 4 sides (Top, Bottom, Left, Right)
-- **Visual Feedback**: See drop zones highlight as you drag
+### 🔧 Low-level API — `<Mosaic>` + `<MosaicWindow>`
+- Manage the tree yourself (`value` / `onChange`), wire `renderTile` and the toolbar.
+- Built-in toolbar buttons (Split `⊞`, Replace `↻`, Expand `⛶` 70%, Maximize `⤢`, Close `✕`).
+- **`onError`**: toggle "Simulate createNode failure", then Split/Replace surfaces the
+  rejected `createNode` through a banner instead of failing silently.
 
-### ↔️ Resizing
-- **Drag Split Bars**: Click and drag the dividers between windows
-- **Minimum Size**: Windows respect minimum size constraints
-- **Live Update**: See changes in real-time as you resize
+### 💾 Persisted layout — `usePersistedLayout`
+- **Registry-based panels** (id → component) saved to `localStorage`; restore on reload.
+- **`usePanelState`**: the "Todo" panel's checkbox state is saved/restored with the layout
+  (wrap `<MosaicLayout>` in the returned `PanelStateProvider`).
+- **`syncAcrossTabs`**: open the page in a second tab and Save — the other tab re-hydrates live.
+- **`defineRegistry`**: the registry is type-checked, including per-entry `componentProps`
+  (the "Badge" panel passes typed props).
 
-### 💾 Persisted Layout
-- **Registry-based panels**: Panels are described by an id → component registry (`usePersistedLayout`)
-- **Save Layout**: Persist the current arrangement (and split sizes) to `localStorage`
-- **Restore on reload**: Reopen the page and the saved layout is rebuilt automatically
+### 🎨 Drag & drop and ↔️ resizing (all tabs)
+- Drag a window's title to move it; drop on any of the 4 sides or the viewport edges.
+- Drag the split bars to resize (minimum pane size enforced, live update).
+- Resize handles are **keyboard operable**: focus a handle, then Arrow keys nudge
+  (Shift = 10%), Home/End jump to the min/max pane size.
 
 ## Code Structure
 
